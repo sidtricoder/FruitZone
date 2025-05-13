@@ -7,7 +7,7 @@ interface Product {
   id: string;
   name: string;
   category: string;
-  price: number;
+  price: number; // Price in INR
   imageUrl: string;
   description: string;
 }
@@ -17,67 +17,69 @@ const mockProducts: Product[] = [
     id: '1',
     name: 'Dehydrated Apple Slices',
     category: 'Fruits',
-    price: 5.99,
+    price: 499, // Approx. 5.99 USD to INR (1 USD ~ 83.5 INR)
     imageUrl: 'https://images.unsplash.com/photo-1586999491929-e58d4f007133?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Crisp and sweet, perfect for snacking or adding to oatmeal.'
+    description: 'Crisp, sweet, and intensely apple-y. Perfect for healthy snacking or elevating your morning oatmeal.'
   },
   {
     id: '2',
-    name: 'Sun-Dried Tomatoes',
+    name: 'Sun-Kissed Tomato Halves',
     category: 'Vegetables',
-    price: 7.49,
+    price: 625, // Approx. 7.49 USD to INR
     imageUrl: 'https://images.unsplash.com/photo-1590779031874-3435ac0130c3?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Rich and flavorful, ideal for pasta, salads, and sauces.'
+    description: 'Rich, umami-packed flavor bombs. Ideal for artisanal pasta, vibrant salads, and gourmet sauces.'
   },
   {
     id: '3',
-    name: 'Dried Mango Cheeks',
+    name: 'Velvet Mango Cheeks',
     category: 'Fruits',
-    price: 8.99,
+    price: 750, // Approx. 8.99 USD to INR
     imageUrl: 'https://images.unsplash.com/photo-1600439026898-3ea879a05947?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Sweet, chewy, and tropical. A delightful healthy treat.'
+    description: 'Sweet, chewy, and bursting with tropical sunshine. A delightful and guilt-free healthy indulgence.'
   },
   {
     id: '4',
-    name: 'Dehydrated Carrot Chips',
+    name: 'Sweet Carrot Ribbons',
     category: 'Vegetables',
-    price: 4.99,
+    price: 415, // Approx. 4.99 USD to INR
     imageUrl: 'https://images.unsplash.com/photo-1582515072091-f95970942cdc?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Crunchy and naturally sweet, a great alternative to potato chips.'
+    description: 'Naturally sweet with a satisfying crunch. A vibrant, nutrient-dense alternative to potato chips.'
   },
   {
     id: '5',
-    name: 'Dried Strawberries',
+    name: 'Ruby Red Strawberry Slices',
     category: 'Fruits',
-    price: 9.99,
+    price: 835, // Approx. 9.99 USD to INR
     imageUrl: 'https://images.unsplash.com/photo-1628009887947-7a03f87a581a?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Intensely flavorful and perfect for cereals, desserts, or snacking.'
+    description: 'Intensely flavorful and aromatic. Perfect for cereals, desserts, or as a standalone gourmet snack.'
   },
   {
     id: '6',
-    name: 'Dehydrated Bell Peppers',
+    name: 'Rainbow Bell Pepper Confetti',
     category: 'Vegetables',
-    price: 6.29,
+    price: 525, // Approx. 6.29 USD to INR
     imageUrl: 'https://images.unsplash.com/photo-1518736312942-00ba36219570?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-    description: 'Colorful and versatile, adds a sweet pepper flavor to any dish.'
+    description: 'A vibrant mix of sweet and colorful dehydrated peppers. Adds a pop of flavor and color to any dish.'
   }
 ];
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   return (
     <motion.div 
-      className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300"
+      className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 group"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover" />
+      <div className="overflow-hidden">
+        <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+      </div>
       <div className="p-6">
-        <h3 className="text-xl font-semibold text-green-700 mb-2">{product.name}</h3>
-        <p className="text-sm text-gray-600 mb-1">{product.category}</p>
-        <p className="text-gray-800 font-bold text-lg mb-3">${product.price.toFixed(2)}</p>
-        <p className="text-gray-700 text-sm mb-4 h-16 overflow-hidden">{product.description}</p>
-        <button className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center">
+        <h3 className="text-xl font-semibold text-green-700 mb-2 truncate" title={product.name}>{product.name}</h3>
+        <p className="text-sm text-gray-500 mb-1 capitalize">{product.category}</p>
+        <p className="text-gray-800 font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p>
+        <p className="text-gray-700 text-sm mb-4 h-16 overflow-hidden text-ellipsis">{product.description}</p>
+        <button className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md">
           <ShoppingBag size={18} className="mr-2" /> Add to Cart
         </button>
       </div>
