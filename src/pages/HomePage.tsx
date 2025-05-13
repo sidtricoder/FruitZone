@@ -112,7 +112,7 @@ const HomePage: React.FC = () => {
               className="overflow-hidden rounded-xl shadow-2xl"
             >
               <img 
-                src="https://images.unsplash.com/photo-1585334909000-59540c245738?q=80&w=1935&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" 
+                src="/static/images/home-usage-image.jpg" 
                 alt="Artistic display of various dehydrated fruit and vegetable pieces in a bowl"
                 className="rounded-xl object-cover w-full h-auto max-h-[450px] md:max-h-[500px] transform hover:scale-110 transition-transform duration-500 ease-out"
               />

@@ -18,7 +18,7 @@ const mockProducts: Product[] = [
     name: 'Dehydrated Apple Slices',
     category: 'Fruits',
     price: 499, // Approx. 5.99 USD to INR (1 USD ~ 83.5 INR)
-    imageUrl: 'https://images.unsplash.com/photo-1586999491929-e58d4f007133?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-apple.jpg',
     description: 'Crisp, sweet, and intensely apple-y. Perfect for healthy snacking or elevating your morning oatmeal.'
   },
   {
@@ -26,7 +26,7 @@ const mockProducts: Product[] = [
     name: 'Sun-Kissed Tomato Halves',
     category: 'Vegetables',
     price: 625, // Approx. 7.49 USD to INR
-    imageUrl: 'https://images.unsplash.com/photo-1590779031874-3435ac0130c3?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-tomato.jpg',
     description: 'Rich, umami-packed flavor bombs. Ideal for artisanal pasta, vibrant salads, and gourmet sauces.'
   },
   {
@@ -34,7 +34,7 @@ const mockProducts: Product[] = [
     name: 'Velvet Mango Cheeks',
     category: 'Fruits',
     price: 750, // Approx. 8.99 USD to INR
-    imageUrl: 'https://images.unsplash.com/photo-1600439026898-3ea879a05947?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-mango.jpg',
     description: 'Sweet, chewy, and bursting with tropical sunshine. A delightful and guilt-free healthy indulgence.'
   },
   {
@@ -42,7 +42,7 @@ const mockProducts: Product[] = [
     name: 'Sweet Carrot Ribbons',
     category: 'Vegetables',
     price: 415, // Approx. 4.99 USD to INR
-    imageUrl: 'https://images.unsplash.com/photo-1582515072091-f95970942cdc?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-carrot.jpg',
     description: 'Naturally sweet with a satisfying crunch. A vibrant, nutrient-dense alternative to potato chips.'
   },
   {
@@ -50,7 +50,7 @@ const mockProducts: Product[] = [
     name: 'Ruby Red Strawberry Slices',
     category: 'Fruits',
     price: 835, // Approx. 9.99 USD to INR
-    imageUrl: 'https://images.unsplash.com/photo-1628009887947-7a03f87a581a?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-strawberry.jpg',
     description: 'Intensely flavorful and aromatic. Perfect for cereals, desserts, or as a standalone gourmet snack.'
   },
   {
@@ -58,7 +58,7 @@ const mockProducts: Product[] = [
     name: 'Rainbow Bell Pepper Confetti',
     category: 'Vegetables',
     price: 525, // Approx. 6.29 USD to INR
-    imageUrl: 'https://images.unsplash.com/photo-1518736312942-00ba36219570?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    imageUrl: '/static/images/product-pepper.jpg',
     description: 'A vibrant mix of sweet and colorful dehydrated peppers. Adds a pop of flavor and color to any dish.'
   }
 ];
