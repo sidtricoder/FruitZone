@@ -1,24 +1,56 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, User } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { Button } from './ui/button';
+import { gsap } from 'gsap';
 
 const Navbar: React.FC = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    gsap.from(navRef.current, {
+      y: -100,
+      opacity: 0,
+      duration: 1,
+      ease: 'power3.out'
+    });
+  }, []);
+
   return (
-    <nav className="bg-gradient-to-r from-green-400 to-lime-500 shadow-lg sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-white hover:text-green-100 transition-colors duration-300">
-          FruitZone
-        </Link>
-        <div className="flex items-center space-x-4">
-          <Link to="/" className="text-white hover:text-green-100 transition-colors duration-300">Home</Link>
-          <Link to="/shop" className="text-white hover:text-green-100 transition-colors duration-300">Shop</Link>
-          {/* Add other nav links here */}
-          <button className="text-white hover:text-green-100 transition-colors duration-300">
-            <ShoppingCart size={24} />
-          </button>
-          <button className="text-white hover:text-green-100 transition-colors duration-300">
-            <User size={24} />
-          </button>
+    <nav ref={navRef} className="bg-white/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="text-2xl font-bold text-primary">
+              FruitZone
+            </Link>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <Link to="/">
+              <Button variant="ghost">Home</Button>
+            </Link>
+            <Link to="/shop">
+              <Button variant="ghost">Shop</Button>
+            </Link>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-muted-foreground">
+                  {user?.mobile_number}
+                </span>
+                <Button variant="outline" onClick={logout}>
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Link to="/auth">
+                <Button>Login</Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </nav>

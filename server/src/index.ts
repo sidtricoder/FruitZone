@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { connectDB } from './config/database'; // Import connectDB
+import authRoutes from './routes/authRoutes'; // Import auth routes
 
 dotenv.config();
 
@@ -21,9 +22,10 @@ app.get('/', (req: Request, res: Response) => {
   res.send('FruitZone Backend Server is Running!');
 });
 
-// TODO: Add other routes (auth, products, cart, orders)
-// import authRoutes from './routes/authRoutes';
-// app.use('/api/auth', authRoutes);
+// API Routes
+app.use('/api/auth', authRoutes); // Use auth routes
+
+// TODO: Add other routes (products, cart, orders)
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
