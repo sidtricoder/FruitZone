@@ -1,54 +1,68 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config(); // Load environment variables
+dotenv.config();
 
-// Vercel Postgres provides the connection string via POSTGRES_URL or similar environment variables.
-// For local development, you can set POSTGRES_URL in your .env file.
 const connectionString = process.env.POSTGRES_URL;
 
-if (!connectionString && process.env.NODE_ENV !== 'production') {
-  console.warn(
-    "Warning: POSTGRES_URL environment variable is not set. " +
-    "For local development, please ensure it's in your .env file. " +
-    "Example: postgres://user:password@host:port/database"
-  );
-  // If you were to use individual parameters for local fallback (less common for Vercel Postgres):
-  // pool = new Pool({
-  //   user: process.env.PGUSER,
-  //   host: process.env.PGHOST,
-  //   database: process.env.PGDATABASE,
-  //   password: process.env.PGPASSWORD,
-  //   port: Number(process.env.PGPORT),
-  // });
-} else if (!connectionString && process.env.NODE_ENV === 'production') {
-    console.error("FATAL ERROR: POSTGRES_URL is not set in production environment.");
-    // In a serverless environment, throwing an error or logging is more appropriate than process.exit
-    throw new Error("FATAL ERROR: POSTGRES_URL is not set in production environment.");
+if (!connectionString) {
+  const errorMessage = "CRITICAL ERROR: POSTGRES_URL environment variable is not set.";
+  if (process.env.NODE_ENV === 'production') {
+    console.error(errorMessage + " This is absolutely required for the application to run in production on Vercel.");
+    // In a production environment, you might want to throw an error to halt startup
+    // or ensure the application does not attempt to operate without a database.
+    // throw new Error(errorMessage + " Application cannot start without POSTGRES_URL in production.");
+  } else {
+    console.warn(errorMessage + " Please ensure it is set in your .env file for local development. Example: postgres://user:password@host:port/database");
+  }
 }
 
 export const pool = new Pool({
   connectionString,
-  // Vercel Postgres typically requires SSL and handles it via the connection string.
-  // For local connections to some Postgres instances, you might need to configure SSL explicitly.
-  // ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-  // However, for Vercel Postgres, the connectionString is usually sufficient.
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false } // Standard for Vercel Postgres and similar managed services
+    : undefined, // No SSL for local development by default, or use local SSL config if needed
 });
 
-export const connectDB = async () => {
+pool.on('connect', (client: PoolClient) => {
+  if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'silent') {
+    // console.log('Database pool: A new client has been connected.'); // Verbose, enable for debugging pool activity
+  }
+});
+
+pool.on('error', (err: Error, client: PoolClient) => {
+  console.error('PostgreSQL client error (idle client)', {
+    errorMessage: err.message,
+    // errorStack: err.stack, // Can be very verbose
+    // clientInfo: client ? `Client processID: ${client.processID}` : 'Client undefined at time of error'
+  });
+  // This is a serious error, ensure monitoring is in place for these.
+});
+
+// Function to check database connectivity, intended to be called from server/src/index.ts at startup
+export const connectDB = async (): Promise<boolean> => {
+  let client: PoolClient | undefined;
   try {
-    const client = await pool.connect();
-    console.log('Vercel Postgres Connected successfully via pool.');
-    await client.query('SELECT NOW()'); // Test query
-    client.release();
-  } catch (error) {
-    console.error('Vercel Postgres connection error:', error);
-    // The function attempting the DB operation should handle the error.
+    client = await pool.connect();
+    await client.query('SELECT NOW()'); // Simple query to confirm the connection is live
+    if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'silent') {
+      console.log('Successfully connected to the PostgreSQL database.');
+    }
+    return true;
+  } catch (error: any) {
+    console.error('Failed to connect to the PostgreSQL database on startup:', {
+      errorMessage: error.message,
+      // errorCode: error.code, // Useful for specific PG error codes
+      // errorStack: error.stack,
+    });
+    // If DB connection is critical for app startup, especially in production, consider exiting or re-throwing
+    // if (process.env.NODE_ENV === 'production') {
+    //   // throw new Error(`Database connection failed: ${error.message}`);
+    // }
+    return false;
+  } finally {
+    if (client) {
+      client.release(); // Always release the client
+    }
   }
 };
-
-// Optional: A function to get a client from the pool for transactions
-// export const getClient = async () => {
-//   const client = await pool.connect();
-//   return client;
-// };

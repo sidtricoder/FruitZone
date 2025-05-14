@@ -27,8 +27,9 @@ export const sendOtpService = async (mobileNumber: string): Promise<{ success: b
     });
     const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-    const client = await pool.connect();
+    let client; // Declare client outside try
     try {
+        client = await pool.connect();
         // Check if user exists
         let userResult = await client.query<User>('SELECT * FROM users WHERE mobile_number = $1', [mobileNumber]);
         let user: User | null = userResult.rows[0] || null;
@@ -54,20 +55,24 @@ export const sendOtpService = async (mobileNumber: string): Promise<{ success: b
         return { success: true, message: 'OTP generated and (conceptually) sent.' };
 
     } catch (error) {
-        console.error('[sendOtpService] Database Error:', error);
-        return { success: false, message: 'Failed to process OTP request due to a database error.', statusCode: 500 };
+        console.error('[sendOtpService] Database/Service Error:', error);
+        return { success: false, message: 'Failed to process OTP request due to a server error.', statusCode: 500 };
     } finally {
-        client.release();
+        if (client) { // Only release if client was successfully acquired
+            client.release();
+        }
     }
 };
 
 /**
  * Verifies the OTP provided by the user.
  * Returns user details if OTP is valid, null otherwise.
+ * Throws an error for unexpected issues (e.g., database connection).
  */
 export const verifyOtpService = async (mobileNumber: string, otp: string): Promise<User | null> => {
-    const client = await pool.connect();
+    let client; // Declare client outside try
     try {
+        client = await pool.connect();
         const userResult = await client.query<User>(
             'SELECT * FROM users WHERE mobile_number = $1',
             [mobileNumber]
@@ -106,9 +111,11 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
         return updatedUserResult.rows[0] || null;
 
     } catch (error) {
-        console.error('[verifyOtpService] Database Error:', error);
-        return null; // Or throw a custom error to be handled by the controller
+        console.error('[verifyOtpService] Database/Service Error:', error);
+        throw error; // Re-throw the error to be caught by the controller's catch block
     } finally {
-        client.release();
+        if (client) { // Only release if client was successfully acquired
+            client.release();
+        }
     }
 };
