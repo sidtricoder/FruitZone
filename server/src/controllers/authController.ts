@@ -28,21 +28,18 @@ export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>
         const result: SendOtpServiceResponse = await sendOtpService(mobile_number);
         if (!result.success) {
             // Service layer handled the error and provided a message and status code
-            // 'result' here is SendOtpServiceError, which now includes an 'error' property
-            const errorDetail = result.error ? { message: result.error.message, stack: result.error.stack } : {};
-            const isProduction = true; // Assume production for tool if process.env is unavailable
+            console.error(`sendOtpService failed for ${mobile_number}: ${result.message}`, result.error); // Added detailed logging
             return res.status(result.statusCode || 500).json({ 
                 message: result.message,
-                // Conditionally add more details in non-production
-                ...(!isProduction && result.error ? { error: errorDetail } : {})
+                error: result.error ? { message: result.error.message, stack: result.error.stack } : undefined
             });
         }
         return res.status(200).json({ message: 'OTP sent successfully.' });
     } catch (error: any) { // Catch any unexpected errors not caught by the service
-        const isProduction = true; // Assume production for tool
+        console.error(`Unexpected error in sendOtpController for ${mobile_number}:`, error); // Added detailed logging
         return res.status(500).json({
-            message: isProduction ? 'Internal server error' : error.message,
-            ...( !isProduction && error.stack ? { stack: error.stack } : {}),
+            message: error.message || 'Internal server error',
+            stack: error.stack
         });
     }
 };
@@ -62,17 +59,18 @@ export const verifyOtpController = async (req: Request<{}, {}, VerifyOtpRequestB
         const user = await verifyOtpService(mobile_number, otp);
 
         if (!user) {
+            // Log this attempt for easier debugging
+            console.warn(`Invalid OTP or mobile number attempt: ${mobile_number}`);
             return res.status(400).json({ message: 'Invalid OTP or mobile number' });
         }
 
         // User is verified, generate a JWT token
-        // Ensure JWT_SECRET is available
-        const jwtSecret = "dummy_secret_for_tool_linting_should_be_env_var"; // Assume for tool
+        const jwtSecret = process.env.JWT_SECRET;
         if (!jwtSecret) {
-            const isProduction = true; // Assume production for tool
+            console.error("FATAL: JWT_SECRET is not defined in environment variables.");
             return res.status(500).json({
                 message: 'Internal server error: JWT configuration missing.',
-                ...(!isProduction ? { detail: 'JWT_SECRET environment variable is not set.' } : {})
+                detail: 'JWT_SECRET environment variable is not set.'
             });
         }
         const token = generateToken({ userId: user.id, mobileNumber: user.mobile_number });
@@ -87,10 +85,10 @@ export const verifyOtpController = async (req: Request<{}, {}, VerifyOtpRequestB
             }
         });
     } catch (error: any) {
-        const isProduction = true; // Assume production for tool
+        console.error(`Unexpected error in verifyOtpController for ${mobile_number}:`, error); // Added detailed logging
         return res.status(500).json({
-            message: isProduction ? 'Internal server error' : error.message,
-            ...( !isProduction && error.stack ? { stack: error.stack } : {}),
+            message: error.message || 'Internal server error',
+            stack: error.stack
         });
     }
 };
