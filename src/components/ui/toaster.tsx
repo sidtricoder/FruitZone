@@ -1,14 +1,16 @@
 import * as React from "react"
-import { Toast, ToastProvider, ToastViewport } from "./toast"
-import { useToast } from "./use-toast"
+import { Toast, ToastProvider, ToastViewport } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/use-toast"
 
-interface Toast {
+interface ToastProps {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactElement;
   [key: string]: any;
 }
+
+type Toast = ToastProps;
 
 export function Toaster() {
   const { toasts } = useToast()

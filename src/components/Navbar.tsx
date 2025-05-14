@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, User } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { Button } from './ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
 import { gsap } from 'gsap';
 
 const Navbar: React.FC = () => {
