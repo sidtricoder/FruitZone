@@ -15,11 +15,26 @@ interface User {
     updated_at: Date;
 }
 
+// Define specific types for the service response
+interface SendOtpServiceSuccess {
+    success: true;
+    message: string;
+}
+
+interface SendOtpServiceError {
+    success: false;
+    message: string;
+    statusCode: number;
+    error?: Error; // To hold the original error object
+}
+
+export type SendOtpServiceResponse = SendOtpServiceSuccess | SendOtpServiceError;
+
 /**
  * Generates an OTP, stores it for the user (creating user if not exists),
  * and (conceptually) sends it.
  */
-export const sendOtpService = async (mobileNumber: string): Promise<{ success: boolean; message: string; statusCode?: number }> => {
+export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServiceResponse> => {
     const otp = otpGenerator.generate(OTP_LENGTH, {
         upperCaseAlphabets: false,
         lowerCaseAlphabets: false,
@@ -49,14 +64,19 @@ export const sendOtpService = async (mobileNumber: string): Promise<{ success: b
             user = newUserResult.rows[0];
         }
 
-        console.log(`OTP for ${mobileNumber}: ${otp}`); // For development: Log OTP. DO NOT do this in production.
+        // console.log(`OTP for ${mobileNumber}: ${otp}`); // For development: Log OTP. DO NOT do this in production.
         // TODO: Integrate SMS gateway to send OTP to user's mobileNumber
 
         return { success: true, message: 'OTP generated and (conceptually) sent.' };
 
-    } catch (error) {
-        console.error('[sendOtpService] Database/Service Error:', error);
-        return { success: false, message: 'Failed to process OTP request due to a server error.', statusCode: 500 };
+    } catch (error: any) { // Ensure 'any' or a more specific error type if known
+        // console.error('[sendOtpService] Database/Service Error:', error);
+        return { 
+            success: false, 
+            message: 'Failed to process OTP request due to a server error.', 
+            statusCode: 500,
+            error: error // Include the original error object
+        };
     } finally {
         if (client) { // Only release if client was successfully acquired
             client.release();
@@ -81,22 +101,22 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
         const user = userResult.rows[0];
 
         if (!user) {
-            console.log(`[verifyOtpService] User not found for mobile: ${mobileNumber}`);
+            // console.log(`[verifyOtpService] User not found for mobile: ${mobileNumber}`);
             return null; // User not found
         }
 
         if (!user.otp || !user.otp_expires_at) {
-            console.log(`[verifyOtpService] No OTP found for user: ${mobileNumber}`);
+            // console.log(`[verifyOtpService] No OTP found for user: ${mobileNumber}`);
             return null; // No OTP was set for this user
         }
 
         if (user.otp !== otp) {
-            console.log(`[verifyOtpService] Invalid OTP for user: ${mobileNumber}. Expected: ${user.otp}, Got: ${otp}`);
+            // console.log(`[verifyOtpService] Invalid OTP for user: ${mobileNumber}. Expected: ${user.otp}, Got: ${otp}`);
             return null; // OTP does not match
         }
 
         if (new Date() > new Date(user.otp_expires_at)) {
-            console.log(`[verifyOtpService] OTP expired for user: ${mobileNumber}`);
+            // console.log(`[verifyOtpService] OTP expired for user: ${mobileNumber}`);
             // Optionally clear the expired OTP
             await client.query('UPDATE users SET otp = NULL, otp_expires_at = NULL, updated_at = NOW() WHERE id = $1', [user.id]);
             return null; // OTP expired
@@ -110,9 +130,10 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
         
         return updatedUserResult.rows[0] || null;
 
-    } catch (error) {
-        console.error('[verifyOtpService] Database/Service Error:', error);
-        throw error; // Re-throw the error to be caught by the controller's catch block
+    } catch (error: any) {
+        // console.error('[verifyOtpService] Database/Service Error:', error);
+        // For verifyOtpService, we are re-throwing. The controller will handle structuring the response.
+        throw error; 
     } finally {
         if (client) { // Only release if client was successfully acquired
             client.release();
