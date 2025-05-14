@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User } from 'lucide-react';
+// import { ShoppingCart, User } from 'lucide-react'; // Removed unused import
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { gsap } from 'gsap';
