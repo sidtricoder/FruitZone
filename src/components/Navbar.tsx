@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,9 +7,9 @@ import { gsap } from 'gsap';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  const navRef = useRef(null);
+  const navRef = React.useRef(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     gsap.from(navRef.current, {
       y: -100,
       opacity: 0,
