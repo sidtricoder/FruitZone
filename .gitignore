@@ -3,7 +3,7 @@
 
 # Node modules
 node_modules/
-
+server/node_modules/
 # TypeScript compiled output
 dist/
 
