@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { connectDB } from './config/database'; // connectDB now returns a Promise<boolean>
 import authRoutes from './routes/authRoutes';
+import healthRoutes from './routes/healthRoutes';
 
 console.log(`[FruitZone Backend] SERVERLESS FUNCTION MODULE LOADING. Timestamp: ${new Date().toISOString()}`);
 console.log(`[FruitZone Backend] Detected NODE_ENV: ${process.env.NODE_ENV}`);
@@ -108,6 +109,9 @@ async function startServer() {
     app.get('/api', (req: Request, res: Response) => {
       res.send('FruitZone API is healthy!');
     });
+
+    // Health check routes
+    app.use('/api/health', healthRoutes);
     
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

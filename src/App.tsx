@@ -7,6 +7,7 @@ import ShopPage from './pages/ShopPage';
 import AuthPage from './pages/AuthPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import { NetworkDebugger } from './components/NetworkDebugger';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -39,10 +40,11 @@ function AppContent() {
               </ProtectedRoute>
             } 
           />
-        </Routes>
-      </main>
+        </Routes>      </main>
       <Footer />
       <Toaster />
+      {/* Add network debugger - also available in production for troubleshooting */}
+      <NetworkDebugger />
     </div>
   );
 }
