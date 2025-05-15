@@ -52,6 +52,11 @@ async function startServer() {
     app.get('/', (req: Request, res: Response) => {
       res.send('FruitZone Backend Server is Running!');
     });
+
+    // Basic Route (can be after DB connection attempt)
+    app.get('/api', (req: Request, res: Response) => {
+      res.send('FruitZone API is healthy!');
+    });
     
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);
