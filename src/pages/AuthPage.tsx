@@ -14,6 +14,7 @@ export default function AuthPage() {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef(null);
+  const otpContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { login, requestOtp, isAuthenticated } = useAuth();
 
@@ -23,12 +24,12 @@ export default function AuthPage() {
     }
     
     // Initial animation
-    gsap.from(formRef.current, {
-      opacity: 0,
-      y: 50,
-      duration: 1,
-      ease: 'power3.out'
-    });
+    // gsap.from(formRef.current, {
+    //   opacity: 0,
+    //   y: 50,
+    //   duration: 1,
+    //   ease: 'power3.out'
+    // });
   }, [isAuthenticated, navigate]);
 
   const handleRequestOtp = async (e: React.FormEvent) => {
@@ -39,13 +40,14 @@ export default function AuthPage() {
       await requestOtp(mobileNumber);
       setIsOtpSent(true);
       
-      // Animate OTP input appearance
-      gsap.to('.otp-container', {
-        height: 'auto',
-        opacity: 1,
-        duration: 0.5,
-        ease: 'power2.out'
-      });
+      // Animate OTP container using GSAP ref
+      if (otpContainerRef.current) {
+        gsap.fromTo(
+          otpContainerRef.current,
+          { height: 0, opacity: 0 },
+          { height: 'auto', opacity: 1, overflow: 'visible', duration: 0.5, ease: 'power2.out' }
+        );
+      }
       
       toast({
         title: "OTP Sent!",
@@ -86,10 +88,10 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 to-background p-4">
-      <Card className="w-full max-w-md" ref={formRef}>
+      <Card className="w-full max-w-md bg-white shadow-lg" ref={formRef}>
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-3xl font-bold text-center text-gray-900">Welcome Back</CardTitle>
+          <CardDescription className="text-center text-gray-700">
             {isOtpSent ? 'Enter the OTP sent to your phone' : 'Login with your mobile number'}
           </CardDescription>
         </CardHeader>
@@ -97,7 +99,7 @@ export default function AuthPage() {
           <form onSubmit={isOtpSent ? handleLogin : handleRequestOtp}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mobile">Mobile Number</Label>
+                <Label htmlFor="mobile" className="text-gray-800 font-medium">Mobile Number</Label>
                 <Input
                   id="mobile"
                   type="tel"
@@ -107,13 +109,13 @@ export default function AuthPage() {
                   pattern="[0-9]{10}"
                   required
                   disabled={isOtpSent}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary border-gray-300 bg-white text-gray-900"
                 />
               </div>
               
               {isOtpSent && (
-                <div className="otp-container space-y-2" style={{ opacity: 0, height: 0, overflow: 'hidden' }}>
-                  <Label htmlFor="otp">OTP</Label>
+                <div ref={otpContainerRef} className="otp-container space-y-2 opacity-0 h-0 overflow-hidden">
+                  <Label htmlFor="otp" className="text-gray-800 font-medium">OTP</Label>
                   <Input
                     id="otp"
                     type="text"
@@ -122,7 +124,7 @@ export default function AuthPage() {
                     onChange={(e) => setOtp(e.target.value)}
                     pattern="[0-9]{6}"
                     required
-                    className="transition-all duration-200 focus:ring-2 focus:ring-primary"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-primary border-gray-300 bg-white text-gray-900"
                   />
                 </div>
               )}
@@ -130,7 +132,7 @@ export default function AuthPage() {
             
             <Button 
               type="submit" 
-              className="w-full mt-6"
+              className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -145,7 +147,7 @@ export default function AuthPage() {
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-600">
             By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
         </CardFooter>

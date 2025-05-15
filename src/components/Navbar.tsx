@@ -1,21 +1,19 @@
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-// import { ShoppingCart, User } from 'lucide-react'; // Removed unused import
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { gsap } from 'gsap';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navRef = React.useRef(null);
 
   React.useEffect(() => {
-    gsap.from(navRef.current, {
-      y: -100,
-      opacity: 0,
-      duration: 1,
-      ease: 'power3.out'
-    });
+    // gsap.from(navRef.current, {
+    //   y: -100,
+    //   opacity: 0,
+    //   duration: 1,
+    //   ease: 'power3.out'
+    // });
   }, []);
 
   return (
