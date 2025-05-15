@@ -44,12 +44,24 @@ const app: Express = express();
 const port = process.env.PORT || 5001;
 
 // Middleware
-// Configure CORS to allow requests from the frontend
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Configure CORS based on environment
+if (process.env.NODE_ENV === 'production') {
+  // In production, allow all origins (Vercel deployments)
+  app.use(cors({
+    origin: '*', // Allow all origins in production
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+  console.log('[FruitZone Backend] CORS configured to allow all origins in production');
+} else {
+  // In development, only allow specific origins
+  app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+  console.log('[FruitZone Backend] CORS configured for development environment');
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

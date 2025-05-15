@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, ReactNode } from 'react';
+import { API_ENDPOINTS } from '../lib/config';
 
 export interface User {
   id: number;
@@ -36,11 +37,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
-  }, []);
-  const requestOtp = async (mobileNumber: string) => {
+  }, []);  const requestOtp = async (mobileNumber: string) => {
     try {
-      // Use explicit backend URL with port 5002
-      const response = await fetch('http://localhost:5002/api/auth/send-otp', {
+      // Use environment-aware API endpoint
+      const response = await fetch(API_ENDPOINTS.SEND_OTP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile_number: mobileNumber }),
@@ -54,11 +54,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('OTP request failed:', error);
       throw error;
     }
-  };
-  const login = async (mobileNumber: string, otp: string) => {
+  };  const login = async (mobileNumber: string, otp: string) => {
     try {
-      // Use explicit backend URL with port 5002
-      const response = await fetch('http://localhost:5002/api/auth/verify-otp', {
+      // Use environment-aware API endpoint
+      const response = await fetch(API_ENDPOINTS.VERIFY_OTP, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile_number: mobileNumber, otp }),
