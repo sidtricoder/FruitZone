@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { gsap } from 'gsap';
+// import { gsap } from 'gsap'; // Temporarily comment out if not used elsewhere after otpContainer animation removal
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,13 +41,13 @@ export default function AuthPage() {
       setIsOtpSent(true);
       
       // Animate OTP container using GSAP ref
-      if (otpContainerRef.current) {
-        gsap.fromTo(
-          otpContainerRef.current,
-          { height: 0, opacity: 0 },
-          { height: 'auto', opacity: 1, overflow: 'visible', duration: 0.5, ease: 'power2.out' }
-        );
-      }
+      // if (otpContainerRef.current) { // Temporarily comment out GSAP animation
+      //   gsap.fromTo(
+      //     otpContainerRef.current,
+      //     { height: 0, opacity: 0 },
+      //     { height: 'auto', opacity: 1, overflow: 'visible', duration: 0.5, ease: 'power2.out' }
+      //   );
+      // }
       
       toast({
         title: "OTP Sent!",
@@ -114,7 +114,7 @@ export default function AuthPage() {
               </div>
               
               {isOtpSent && (
-                <div ref={otpContainerRef} className="otp-container space-y-2 opacity-0 h-0 overflow-hidden">
+                <div ref={otpContainerRef} className="otp-container space-y-2"> {/* After: Removed opacity-0 h-0 overflow-hidden */}
                   <Label htmlFor="otp" className="text-gray-800 font-medium">OTP</Label>
                   <Input
                     id="otp"

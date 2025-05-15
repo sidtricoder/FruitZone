@@ -4,7 +4,11 @@ import cors from 'cors';
 import { connectDB } from './config/database'; // connectDB now returns a Promise<boolean>
 import authRoutes from './routes/authRoutes';
 
+console.log(`[FruitZone Backend] SERVERLESS FUNCTION MODULE LOADING. Timestamp: ${new Date().toISOString()}`);
+console.log(`[FruitZone Backend] Detected NODE_ENV: ${process.env.NODE_ENV}`);
+
 dotenv.config();
+console.log(`[FruitZone Backend] After dotenv.config(), POSTGRES_URL available: ${!!process.env.POSTGRES_URL}`);
 
 const app: Express = express();
 const port = process.env.PORT || 5001;
