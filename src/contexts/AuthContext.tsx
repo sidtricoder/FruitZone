@@ -37,10 +37,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     setIsLoading(false);
   }, []);
-
   const requestOtp = async (mobileNumber: string) => {
     try {
-      const response = await fetch('/api/auth/send-otp', {
+      // Use explicit backend URL with port 5002
+      const response = await fetch('http://localhost:5002/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile_number: mobileNumber }),
@@ -55,10 +55,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       throw error;
     }
   };
-
   const login = async (mobileNumber: string, otp: string) => {
     try {
-      const response = await fetch('/api/auth/verify-otp', {
+      // Use explicit backend URL with port 5002
+      const response = await fetch('http://localhost:5002/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile_number: mobileNumber, otp }),

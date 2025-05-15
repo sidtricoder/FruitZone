@@ -9,7 +9,8 @@
     "test:db": "ts-node test-db-connection.ts",
     "validate:env": "node validate-env.js",
     "predev": "node validate-env.js",
-    "init:db": "ts-node init-database.ts"
+    "init:db": "ts-node init-database.ts",
+    "free-port": "node free-port.js"
   },
   "keywords": [],
   "author": "",
