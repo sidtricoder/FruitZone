@@ -11,6 +11,8 @@ interface User {
     otp?: string | null;
     otp_expires_at?: Date | null;
     is_verified: boolean;
+    name?: string | null; // Added
+    default_address_id?: number | null; // Added (assuming BIGINT maps to number)
     created_at: Date;
     updated_at: Date;
 }
@@ -57,6 +59,7 @@ export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServi
             );
         } else {
             // User does not exist, create new user
+            // name and default_address_id will be NULL by default as per schema
             const newUserResult = await client.query<User>(
                 'INSERT INTO users (mobile_number, otp, otp_expires_at, is_verified) VALUES ($1, $2, $3, FALSE) RETURNING *',
                 [mobileNumber, otp, otpExpiresAt]
@@ -123,6 +126,7 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
         }
 
         // OTP is valid, mark user as verified and clear OTP
+        // The RETURNING * will include the name and default_address_id (which might be null)
         const updatedUserResult = await client.query<User>(
             'UPDATE users SET is_verified = TRUE, otp = NULL, otp_expires_at = NULL, updated_at = NOW() WHERE id = $1 RETURNING *',
             [user.id]
