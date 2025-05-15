@@ -1,14 +1,44 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import { connectDB } from './config/database'; // connectDB now returns a Promise<boolean>
 import authRoutes from './routes/authRoutes';
 
 console.log(`[FruitZone Backend] SERVERLESS FUNCTION MODULE LOADING. Timestamp: ${new Date().toISOString()}`);
 console.log(`[FruitZone Backend] Detected NODE_ENV: ${process.env.NODE_ENV}`);
 
+// Read and log the .env file directly
+const envPath = path.resolve(__dirname, '../.env');
+console.log(`[FruitZone Backend] Checking .env file at: ${envPath}`);
+if (fs.existsSync(envPath)) {
+  console.log('[FruitZone Backend] .env file found, reading contents:');
+  const envContents = fs.readFileSync(envPath, 'utf8');
+  const sanitizedContents = envContents
+    .split('\n')
+    .map(line => {
+      // Hide sensitive information
+      if (line.includes('PASSWORD') || line.includes('SECRET')) {
+        return line.replace(/=.+/, '=[REDACTED]');
+      }
+      return line;
+    })
+    .join('\n');
+  console.log(sanitizedContents);
+} else {
+  console.log('[FruitZone Backend] .env file not found!');
+}
+
+// Load environment variables
 dotenv.config();
-console.log(`[FruitZone Backend] After dotenv.config(), POSTGRES_URL available: ${!!process.env.POSTGRES_URL}`);
+
+// Log all environment variables
+console.log('[FruitZone Backend] Environment variables loaded:');
+console.log(`- NODE_ENV: ${process.env.NODE_ENV || '(not set)'}`);
+console.log(`- PORT: ${process.env.PORT || '(not set)'}`);
+console.log(`- SUPABASE_DB_URL: ${process.env.SUPABASE_DB_URL ? (process.env.SUPABASE_DB_URL.substring(0, 15) + '...') : '(not set)'}`);
+console.log(`- JWT_SECRET: ${process.env.JWT_SECRET ? '[REDACTED]' : '(not set)'}`);
 
 const app: Express = express();
 const port = process.env.PORT || 5001;

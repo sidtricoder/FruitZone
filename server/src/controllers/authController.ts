@@ -4,16 +4,21 @@ import { sendOtpService, verifyOtpService, SendOtpServiceResponse } from '../ser
 import { generateToken } from '../utils/jwtHelper'; // We'll create this util soon
 
 interface SendOtpRequestBody {
-    mobile_number: string;
+    mobile_number?: string;
+    mobileNumber?: string; // Adding support for camelCase
 }
 
 interface VerifyOtpRequestBody {
-    mobile_number: string;
+    mobile_number?: string;
+    mobileNumber?: string; // Adding support for camelCase
     otp: string;
 }
 
 export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>, res: Response) => {
-    const { mobile_number } = req.body;
+    console.log('Request body:', req.body); // Debug: log the request body
+    
+    // Support both mobile_number and mobileNumber
+    const mobile_number = req.body.mobile_number || req.body.mobileNumber;
 
     if (!mobile_number) {
         return res.status(400).json({ message: 'Mobile number is required' });
@@ -45,7 +50,11 @@ export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>
 };
 
 export const verifyOtpController = async (req: Request<{}, {}, VerifyOtpRequestBody>, res: Response) => {
-    const { mobile_number, otp } = req.body;
+    console.log('Verify OTP request body:', req.body); // Debug: log the request body
+    
+    // Support both mobile_number and mobileNumber
+    const mobile_number = req.body.mobile_number || req.body.mobileNumber;
+    const { otp } = req.body;
 
     if (!mobile_number || !otp) {
         return res.status(400).json({ message: 'Mobile number and OTP are required' });

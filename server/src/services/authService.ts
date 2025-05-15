@@ -47,8 +47,12 @@ export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServi
     let client; // Declare client outside try
     try {
         client = await pool.connect();
+        console.log('[sendOtpService] Connected to the database.');
+
         // Check if user exists
         let userResult = await client.query<User>('SELECT * FROM users WHERE mobile_number = $1', [mobileNumber]);
+        console.log('[sendOtpService] User query result:', userResult.rows);
+
         let user: User | null = userResult.rows[0] || null;
 
         if (user) {
@@ -57,6 +61,7 @@ export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServi
                 'UPDATE users SET otp = $1, otp_expires_at = $2, updated_at = NOW() WHERE id = $3',
                 [otp, otpExpiresAt, user.id]
             );
+            console.log('[sendOtpService] Updated OTP for existing user:', user.id);
         } else {
             // User does not exist, create new user
             // name and default_address_id will be NULL by default as per schema
@@ -65,15 +70,16 @@ export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServi
                 [mobileNumber, otp, otpExpiresAt]
             );
             user = newUserResult.rows[0];
+            console.log('[sendOtpService] Created new user:', user);
         }
 
-        // console.log(`OTP for ${mobileNumber}: ${otp}`); // For development: Log OTP. DO NOT do this in production.
+        console.log(`[sendOtpService] OTP for ${mobileNumber}: ${otp}`); // For development: Log OTP. DO NOT do this in production.
         // TODO: Integrate SMS gateway to send OTP to user's mobileNumber
 
         return { success: true, message: 'OTP generated and (conceptually) sent.' };
 
     } catch (error: any) { // Ensure 'any' or a more specific error type if known
-        // console.error('[sendOtpService] Database/Service Error:', error);
+        console.error('[sendOtpService] Database/Service Error:', error);
         return { 
             success: false, 
             message: 'Failed to process OTP request due to a server error.', 
@@ -83,6 +89,7 @@ export const sendOtpService = async (mobileNumber: string): Promise<SendOtpServi
     } finally {
         if (client) { // Only release if client was successfully acquired
             client.release();
+            console.log('[sendOtpService] Database client released.');
         }
     }
 };
