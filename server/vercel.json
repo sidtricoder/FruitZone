@@ -8,11 +8,45 @@
         "includeFiles": ["dist/**"]
       }
     }
-  ],
-  "routes": [
+  ],  "routes": [
+    {
+      "src": "/api/auth/(.*)",
+      "dest": "dist/index.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+        "Cache-Control": "no-store, max-age=0"
+      }
+    },
+    {
+      "src": "/api/health",
+      "dest": "dist/index.js",
+      "methods": ["GET", "HEAD", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache"
+      }
+    },
+    {
+      "src": "/api/diagnostics/(.*)",
+      "dest": "dist/index.js",
+      "methods": ["GET", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store, max-age=0"
+      }
+    },
     {
       "src": "/(.*)",
-      "dest": "dist/index.js"
+      "dest": "dist/index.js",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+      }
     }
   ],
   "env": {

@@ -17,17 +17,33 @@ interface VerifyOtpRequestBody {
 export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>, res: Response) => {
     console.log('Request body:', req.body); // Debug: log the request body
     
+    // Set CORS headers explicitly for this endpoint
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, X-Requested-With, Accept');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
     try {
         // Support both mobile_number and mobileNumber
         const mobile_number = req.body.mobile_number || req.body.mobileNumber;
 
         if (!mobile_number) {
-            return res.status(400).json({ message: 'Mobile number is required' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Mobile number is required' 
+            });
         }
 
         // Basic validation for mobile number format (can be enhanced)
         if (!/^\d{10,15}$/.test(mobile_number)) {
-            return res.status(400).json({ message: 'Invalid mobile number format' });
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid mobile number format' 
+            });
         }
 
         const result: SendOtpServiceResponse = await sendOtpService(mobile_number);
@@ -35,11 +51,15 @@ export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>
             // Service layer handled the error and provided a message and status code
             console.error(`sendOtpService failed for ${mobile_number}: ${result.message}`, result.error); // Added detailed logging
             return res.status(result.statusCode || 500).json({ 
+                success: false,
                 message: result.message || 'Service error',
-                error: result.error ? { message: result.error.message, stack: result.error.stack } : undefined
+                error: result.error ? { message: result.error.message } : undefined
             });
         }
-        return res.status(200).json({ message: 'OTP sent successfully.' });
+        return res.status(200).json({ 
+            success: true,
+            message: 'OTP sent successfully.' 
+        });
     } catch (error: any) { // Catch any unexpected errors not caught by the service
         console.error(`Unexpected error in sendOtpController:`, error); // Added detailed logging
         return res.status(500).json({
@@ -52,6 +72,16 @@ export const sendOtpController = async (req: Request<{}, {}, SendOtpRequestBody>
 
 export const verifyOtpController = async (req: Request<{}, {}, VerifyOtpRequestBody>, res: Response) => {
     console.log('Verify OTP request body:', req.body); // Debug: log the request body
+    
+    // Set CORS headers explicitly for this endpoint
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Origin, X-Requested-With, Accept');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
     
     try {
         // Support both mobile_number and mobileNumber

@@ -7,7 +7,7 @@ import ShopPage from './pages/ShopPage';
 import AuthPage from './pages/AuthPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { NetworkDebugger } from './components/NetworkDebugger';
+import { EnhancedNetworkDebugger } from './components/EnhancedNetworkDebugger';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,8 +43,8 @@ function AppContent() {
         </Routes>      </main>
       <Footer />
       <Toaster />
-      {/* Add network debugger - also available in production for troubleshooting */}
-      <NetworkDebugger />
+      {/* Add enhanced network debugger for troubleshooting */}
+      <EnhancedNetworkDebugger />
     </div>
   );
 }

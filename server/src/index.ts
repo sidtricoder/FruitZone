@@ -6,6 +6,10 @@ import path from 'path';
 import { connectDB } from './config/database'; // connectDB now returns a Promise<boolean>
 import authRoutes from './routes/authRoutes';
 import healthRoutes from './routes/healthRoutes';
+import diagnosticRoutes from './routes/diagnosticRoutes';
+import { corsMiddleware } from './middleware/corsMiddleware';
+import { ensureDatabaseConnection } from './middleware/databaseMiddleware';
+import initSchema from './scripts/init-db-schema';
 
 console.log(`[FruitZone Backend] SERVERLESS FUNCTION MODULE LOADING. Timestamp: ${new Date().toISOString()}`);
 console.log(`[FruitZone Backend] Detected NODE_ENV: ${process.env.NODE_ENV}`);
@@ -51,7 +55,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use(cors({
     origin: '*', // Allow all origins in production
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+    credentials: true,
+    maxAge: 86400 // Cache preflight requests for 24 hours
   }));
   console.log('[FruitZone Backend] CORS configured to allow all origins in production');
 } else {
@@ -59,15 +65,25 @@ if (process.env.NODE_ENV === 'production') {
   app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+    credentials: true
   }));
   console.log('[FruitZone Backend] CORS configured for development environment');
 }
+
+// Handle OPTIONS preflight requests explicitly
+app.options('*', cors());
+
+// Apply our custom CORS middleware as an additional safeguard
+app.use(corsMiddleware);
+
+// Parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // API Routes
-app.use('/api/auth', authRoutes);
+// Apply database connection check middleware to auth routes
+app.use('/api/auth', ensureDatabaseConnection, authRoutes);
 
 // TODO: Add other routes (products, cart, orders)
 
@@ -88,8 +104,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 // Start server function
 async function startServer() {
-  try {
-    const dbConnected = await connectDB(); // Await the DB connection
+  try {    const dbConnected = await connectDB(); // Await the DB connection
 
     if (!dbConnected) {
       console.error("CRITICAL: Database connection failed. Server will start, but API endpoints requiring database access will likely fail.");
@@ -98,6 +113,18 @@ async function startServer() {
       // Logging this clearly is important.
     } else {
       console.log("Database connection established successfully.");
+      
+      // Initialize the database schema in production to ensure tables exist
+      // This is especially important for Vercel serverless functions where we may need to create tables on first run
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          console.log("Running schema initialization in production environment...");
+          await initSchema();
+        } catch (schemaError) {
+          console.error("Schema initialization error:", schemaError);
+          // Continue running the server even if schema initialization fails
+        }
+      }
     }
 
     // Basic Route (can be after DB connection attempt)
@@ -108,10 +135,11 @@ async function startServer() {
     // Basic Route (can be after DB connection attempt)
     app.get('/api', (req: Request, res: Response) => {
       res.send('FruitZone API is healthy!');
-    });
-
-    // Health check routes
+    });    // Health check routes
     app.use('/api/health', healthRoutes);
+    
+    // Diagnostic routes
+    app.use('/api/diagnostics', diagnosticRoutes);
     
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

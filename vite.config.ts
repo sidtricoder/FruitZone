@@ -9,12 +9,11 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  server: {
+  },  server: {
     proxy: {
       // Forward all requests starting with /api to the backend server
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5002', // Updated to match the new backend port
         changeOrigin: true,
         secure: false,
       },
