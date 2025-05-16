@@ -14,7 +14,7 @@ interface QueryOptions {
  * @param options Optional configuration for retries
  * @returns Query result
  */
-export async function executeQuery<T>(
+export async function executeQuery<T extends import('pg').QueryResultRow>(
   query: string, 
   params: any[] = [], 
   options: QueryOptions = {}

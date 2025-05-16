@@ -167,8 +167,7 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
             
             console.log(`[verifyOtpService] User ${mobileNumber} verified successfully`);
             return updatedUserResult.rows[0] || null;
-        });
-    } catch (error: any) {
+        });    } catch (error: any) {
         console.error('[verifyOtpService] Database/Transaction Error:', error);
         
         // Add retry logic for specific types of errors
@@ -182,7 +181,7 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
                     [mobileNumber, otp]
                 );
                 
-                if (userResult.rowCount > 0) {
+                if (userResult.rowCount && userResult.rowCount !== undefined && userResult.rowCount > 0) {
                     // OTP is valid, mark user as verified and clear OTP in a separate query
                     const updatedUserResult = await executeQuery<User>(
                         'UPDATE users SET is_verified = TRUE, otp = NULL, otp_expires_at = NULL, updated_at = NOW() WHERE id = $1 RETURNING *',
@@ -201,5 +200,4 @@ export const verifyOtpService = async (mobileNumber: string, otp: string): Promi
         // Re-throw the original error if not handled above
         throw error;
     }
-    }
-};
+}

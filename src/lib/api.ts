@@ -12,23 +12,46 @@ interface ApiOptions extends RequestInit {
 export async function apiFetch(url: string, options: ApiOptions = {}) {
   const { timeout = 10000, ...fetchOptions } = options;
   
+  console.log(`[API] Making request to: ${url}`, {
+    method: fetchOptions.method || 'GET',
+    headers: fetchOptions.headers
+  });
+  
   try {
     // Add timeout to fetch request
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     
+    // Ensure credentials are included (helps with cookies and CORS)
     const response = await fetch(url, {
       ...fetchOptions,
-      signal: controller.signal
+      signal: controller.signal,
+      credentials: 'include',
+      mode: 'cors'
     });
     
     clearTimeout(id);
     
+    // Log response details for debugging
+    console.log(`[API] Response from ${url}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries([...response.headers.entries()])
+    });
+    
     return response;
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+  } catch (error: any) {
+    console.error(`[API] Request to ${url} failed:`, error);
+    
+    if (error.name === 'AbortError') {
       throw new Error(`Request timed out after ${timeout}ms`);
     }
+    
+    // Enhance error message for common fetch errors
+    if (error.message === 'Failed to fetch') {
+      throw new Error('Network request failed. This could be due to CORS, network connectivity, or server issues.');
+    }
+    
     throw error;
   }
 }

@@ -7,6 +7,7 @@ import { connectDB } from './config/database'; // connectDB now returns a Promis
 import authRoutes from './routes/authRoutes';
 import healthRoutes from './routes/healthRoutes';
 import diagnosticRoutes from './routes/diagnosticRoutes';
+import testRoutes from './routes/testRoutes';
 import { corsMiddleware } from './middleware/corsMiddleware';
 import { ensureDatabaseConnection } from './middleware/databaseMiddleware';
 import initSchema from './scripts/init-db-schema';
@@ -137,9 +138,11 @@ async function startServer() {
       res.send('FruitZone API is healthy!');
     });    // Health check routes
     app.use('/api/health', healthRoutes);
-    
-    // Diagnostic routes
+      // Diagnostic routes
     app.use('/api/diagnostics', diagnosticRoutes);
+    
+    // Test routes (for development debugging)
+    app.use('/api/test', testRoutes);
     
     app.listen(port, () => {
       console.log(`Server is running on http://localhost:${port}`);

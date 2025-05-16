@@ -241,7 +241,95 @@ export function EnhancedNetworkDebugger() {
       addResult({ type: 'error', message, details });
       return false;
     }
+  };  // Direct API Test with echo endpoint - Bypassing regular mechanisms
+  const testDirectOtpRequest = async () => {
+    try {
+      addResult({ type: 'info', message: 'Testing API with simple echo endpoint...' });
+      
+      // First try a simple GET echo endpoint
+      const echoUrl = 'http://localhost:5002/api/test/echo';
+      addResult({ type: 'info', message: `Sending GET to: ${echoUrl}` });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      try {
+        // First test - simple GET request
+        const echoResponse = await fetch(echoUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          },
+          signal: controller.signal
+        });
+        
+        if (echoResponse.ok) {
+          const echoData = await echoResponse.json();
+          addResult({
+            type: 'success',
+            message: 'Echo GET request succeeded!',
+            details: `Request received by server: ${JSON.stringify(echoData.requestInfo, null, 2)}`
+          });
+        } else {
+          addResult({
+            type: 'error',
+            message: `Echo GET request failed: ${echoResponse.status} ${echoResponse.statusText}`,
+            details: await echoResponse.text()
+          });
+        }
+      } catch (echoError: any) {
+        addResult({
+          type: 'error',
+          message: 'Echo GET request failed with exception',
+          details: echoError.message || String(echoError)
+        });
+      }
+      
+      // Now try the OTP endpoint
+      const apiUrl = 'http://localhost:5002/api/auth/send-otp';
+      addResult({ type: 'info', message: `Sending POST to OTP endpoint: ${apiUrl}` });
+      
+      // Try with various combinations of headers and settings
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ mobile_number: '1234567890' }),
+        mode: 'cors',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        addResult({
+          type: 'success',
+          message: 'Direct OTP request succeeded!',
+          details: JSON.stringify(data, null, 2)
+        });
+        return true;
+      } else {
+        const text = await response.text();
+        addResult({
+          type: 'error',
+          message: `Direct OTP request failed: ${response.status} ${response.statusText}`,
+          details: text
+        });
+        return false;
+      }
+    } catch (error: any) {
+      addResult({
+        type: 'error',
+        message: 'Direct OTP request failed with exception',
+        details: error.message || String(error)
+      });
+      return false;
+    }
   };
+
   // Test database connectivity
   const testDatabaseConnection = async () => {
     try {
@@ -251,7 +339,6 @@ export function EnhancedNetworkDebugger() {
       const apiUrl = window.location.hostname !== 'localhost' 
         ? '/api/diagnostics/database' 
         : 'http://localhost:5002/api/diagnostics/database';
-      
       // Create an AbortController to set a timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // Longer timeout for DB ops
@@ -382,13 +469,21 @@ export function EnhancedNetworkDebugger() {
             Debug network connectivity issues
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button 
+        <CardContent>          <Button 
             onClick={runAllTests} 
             disabled={isLoading} 
-            className="w-full mb-4"
+            className="w-full mb-2"
           >
             {isLoading ? 'Running Tests...' : 'Run Network Tests'}
+          </Button>
+          
+          <Button 
+            onClick={testDirectOtpRequest} 
+            disabled={isLoading} 
+            className="w-full mb-4" 
+            variant="outline"
+          >
+            Test Direct OTP Request
           </Button>
           
           <div className="space-y-3 max-h-80 overflow-y-auto">

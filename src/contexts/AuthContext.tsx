@@ -39,14 +39,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     setIsLoading(false);
   }, []);  const requestOtp = async (mobileNumber: string) => {
+    console.log(`[Auth] Requesting OTP for mobile number: ${mobileNumber}`);
+    console.log(`[Auth] Using endpoint: ${API_ENDPOINTS.SEND_OTP}`);
+    
     try {
       // Use enhanced API fetch with timeout
       const response = await apiFetch(API_ENDPOINTS.SEND_OTP, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
         body: JSON.stringify({ mobile_number: mobileNumber }),
         timeout: 15000 // 15 seconds timeout
       });
+      
+      console.log(`[Auth] OTP request response status: ${response.status}`);
       
       if (!response.ok) {
         const errorMessage = await getErrorMessage(response);
