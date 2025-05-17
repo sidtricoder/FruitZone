@@ -43,7 +43,7 @@ export function NetworkDebugger() {
       addResult({ type: 'info', message: 'Testing backend API connectivity...' });
       
       // Use a simple HEAD request to check if the API is available
-      const apiUrl = 'https://server-orcin-beta.vercel.app/api/health';
+      const apiUrl = 'https://fruit-zone-backend.vercel.app/api/health';
       
       // Create an AbortController to set a timeout
       const controller = new AbortController();
@@ -90,7 +90,7 @@ export function NetworkDebugger() {
     try {      addResult({ type: 'info', message: 'Testing OTP endpoint...' });
       
       // Use the deployed backend URL
-      const baseUrl = 'https://server-orcin-beta.vercel.app/api';
+      const baseUrl = 'https://fruit-zone-backend.vercel.app/api';
       const apiUrl = `${baseUrl}/auth/send-otp`;
       
       // Create an AbortController to set a timeout

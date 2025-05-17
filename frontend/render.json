@@ -23,7 +23,7 @@
   "routes": [
     {
       "source": "/api/(.*)",
-      "destination": "https://server-orcin-beta.vercel.app/api/$1"
+      "destination": "https://fruit-zone-backend.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",

@@ -96,7 +96,7 @@ The application is designed for deployment flexibility:
    - Build Command: `npm install && npm run build`
    - Publish Directory: `dist`
    - Environment Variables:
-     - `VITE_BACKEND_URL`: `https://server-orcin-beta.vercel.app`
+     - `VITE_BACKEND_URL`: `https://fruit-zone-backend.vercel.app`
 
 The frontend will work independently and connect to the backend deployed on Vercel.
 
@@ -131,7 +131,7 @@ npm run deploy:backend
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://server-orcin-beta.vercel.app/api/$1"
+      "dest": "https://fruit-zone-backend.vercel.app/api/$1"
     }
   ]
 }

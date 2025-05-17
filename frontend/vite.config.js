@@ -1,7 +1,7 @@
-# This is a special entry point for the render build
-# It allows us to bypass TypeScript compilation issues with vite.config.ts
+// This is a special entry point for the render build
+// It allows us to bypass TypeScript compilation issues with vite.config.ts
 
-# Import from the regular config
+// Import from the regular config
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -17,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://server-orcin-beta.vercel.app',
+        target: 'https://fruit-zone-backend.vercel.app',
         changeOrigin: true,
         secure: true,
         rewrite: (path) => path

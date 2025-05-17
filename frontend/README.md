@@ -1,6 +1,6 @@
 # FruitZone Frontend
 
-This is the frontend portion of the FruitZone application. It's designed to work with the backend API deployed at `https://server-orcin-beta.vercel.app`.
+This is the frontend portion of the FruitZone application. It's designed to work with the backend API deployed at `https://fruit-zone-backend.vercel.app`.
 
 ## Development
 
@@ -44,7 +44,7 @@ This frontend is configured for easy deployment on Render:
 
 The following environment variables can be set:
 
-- `VITE_BACKEND_URL`: The URL of the backend API (default is `https://server-orcin-beta.vercel.app`)
+- `VITE_BACKEND_URL`: The URL of the backend API (default is `https://fruit-zone-backend.vercel.app`)
 
 ## API Routing
 

@@ -10,10 +10,9 @@
         "distDir": "dist"
       }
     }
-  ],  "routes": [
-    {
+  ],  "routes": [    {
       "src": "/api/(.*)",
-      "dest": "https://server-orcin-beta.vercel.app/api/$1",
+      "dest": "https://fruit-zone-backend.vercel.app/api/$1",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",

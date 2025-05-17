@@ -13,7 +13,7 @@ export default defineConfig({
     proxy: {
       // Forward all requests starting with /api to the backend server
       '/api': {
-        target: 'https://server-orcin-beta.vercel.app/', // Updated to match the new backend port
+        target: 'https://fruit-zone-backend.vercel.app/', // Updated to match the new backend port
         changeOrigin: true,
         secure: false,
       },

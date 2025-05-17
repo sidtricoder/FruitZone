@@ -2,17 +2,16 @@
   "version": 2,
   "buildCommand": "npm install && npm run build",  "builds": [
     {
-      "src": "index.js",
+      "src": "dist/index.js",
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["dist/**"]
       }
     }
   ],
-  "routes": [
-    {
+  "routes": [    {
       "src": "/api/(.*)",
-      "dest": "index.js",
+      "dest": "dist/index.js",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
