@@ -28,7 +28,45 @@ npm run install:backend
 
 ### Running Locally
 
+#### From the Root Directory
+
 1. Start the backend server:
+
+```bash
+npm run dev:backend
+```
+
+2. Start the frontend development server:
+
+```bash
+npm run dev:frontend
+```
+
+#### Running Frontend Independently
+
+You can run the frontend independently from its own directory:
+
+1. Navigate to the frontend directory:
+
+```bash
+cd frontend
+```
+
+2. Install dependencies (if not already installed):
+
+```bash
+npm install
+```
+
+3. Run the development server:
+
+```bash
+npm run dev
+```
+
+Or use the provided scripts:
+- Windows: `.\run-dev.ps1`
+- Linux/Mac: `sh run-dev.sh`
 
 ```
 npm run dev:backend

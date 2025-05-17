@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { getApiBaseUrl } from '../lib/config';
+
+// Determine if we're in production (could be moved to config.ts)
+const isProduction = import.meta.env.PROD;
 
 interface DebugResult {
   type: 'info' | 'success' | 'error';
@@ -40,11 +44,10 @@ export function EnhancedNetworkDebugger() {
 
   // Test if the backend API is reachable
   const testBackendApi = async () => {
-    try {
-      addResult({ type: 'info', message: 'Testing backend API connectivity...' });
+    try {      addResult({ type: 'info', message: 'Testing backend API connectivity...' });
       
       // Use a simple HEAD request to check if the API is available
-      const apiUrl = 'https://server-orcin-beta.vercel.app/api/health';
+      const apiUrl = `${getApiBaseUrl()}/health`;
       
       // Create an AbortController to set a timeout
       const controller = new AbortController();
@@ -91,7 +94,7 @@ export function EnhancedNetworkDebugger() {
     try {      addResult({ type: 'info', message: 'Testing OTP endpoint...' });
       
       // Always use the deployed backend URL
-      const baseUrl = 'https://server-orcin-beta.vercel.app/api';
+      const baseUrl = getApiBaseUrl();
       const apiUrl = `${baseUrl}/auth/send-otp`;
       
       addResult({ 
@@ -243,9 +246,8 @@ export function EnhancedNetworkDebugger() {
   };  // Direct API Test with echo endpoint - Bypassing regular mechanisms
   const testDirectOtpRequest = async () => {
     try {      addResult({ type: 'info', message: 'Testing API with simple echo endpoint...' });
-      
-      // Use the deployed backend URL
-      const echoUrl = 'https://server-orcin-beta.vercel.app/api/test/echo';
+        // Use the deployed backend URL
+      const echoUrl = `${getApiBaseUrl()}/test/echo`;
       addResult({ type: 'info', message: `Sending GET to: ${echoUrl}` });
       
       const controller = new AbortController();
@@ -281,9 +283,8 @@ export function EnhancedNetworkDebugger() {
           message: 'Echo GET request failed with exception',
           details: echoError.message || String(echoError)
         });
-      }
-        // Now try the OTP endpoint
-      const apiUrl = 'https://server-orcin-beta.vercel.app/api/auth/send-otp';
+      }        // Now try the OTP endpoint
+      const apiUrl = `${getApiBaseUrl()}/auth/send-otp`;
       addResult({ type: 'info', message: `Sending POST to OTP endpoint: ${apiUrl}` });
       
       // Try with various combinations of headers and settings
@@ -329,10 +330,9 @@ export function EnhancedNetworkDebugger() {
 
   // Test database connectivity
   const testDatabaseConnection = async () => {
-    try {
-      addResult({ type: 'info', message: 'Testing database connectivity...' });
+    try {      addResult({ type: 'info', message: 'Testing database connectivity...' });
             // Call the diagnostics endpoint to check database status
-      const apiUrl = 'https://server-orcin-beta.vercel.app/api/diagnostics/database';
+      const apiUrl = `${getApiBaseUrl()}/diagnostics/database`;
       
       // Create an AbortController to set a timeout
       const controller = new AbortController();
