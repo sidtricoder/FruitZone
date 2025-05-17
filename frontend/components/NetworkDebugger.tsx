@@ -37,14 +37,13 @@ export function NetworkDebugger() {
     addResult({ type: 'success', message: 'Your device is online' });
     return true;
   };
-
   // Test if the backend API is reachable
   const testBackendApi = async () => {
     try {
       addResult({ type: 'info', message: 'Testing backend API connectivity...' });
       
       // Use a simple HEAD request to check if the API is available
-      const apiUrl = window.location.hostname !== 'localhost' ? '/api/health' : 'http://localhost:5002/api/health';
+      const apiUrl = 'https://server-orcin-beta.vercel.app/api/health';
       
       // Create an AbortController to set a timeout
       const controller = new AbortController();
@@ -88,11 +87,10 @@ export function NetworkDebugger() {
 
   // Test sending a request to the OTP endpoint (without actually expecting success)
   const testOtpEndpoint = async () => {
-    try {
-      addResult({ type: 'info', message: 'Testing OTP endpoint...' });
+    try {      addResult({ type: 'info', message: 'Testing OTP endpoint...' });
       
-      // Determine API URL based on environment
-      const baseUrl = window.location.hostname !== 'localhost' ? '/api' : 'http://localhost:5002/api';
+      // Use the deployed backend URL
+      const baseUrl = 'https://server-orcin-beta.vercel.app/api';
       const apiUrl = `${baseUrl}/auth/send-otp`;
       
       // Create an AbortController to set a timeout

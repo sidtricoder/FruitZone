@@ -10,16 +10,27 @@ console.log('\n=== Environment Validation ===\n');
 const requiredVars = ['SUPABASE_DB_URL', 'JWT_SECRET'];
 const missingVars = [];
 
+// In development mode, allow placeholders or bypass checks entirely
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+if (isDevelopment) {
+  console.log('ℹ️ Running in development mode - relaxing environment validation');
+}
+
 requiredVars.forEach(varName => {
   if (!process.env[varName]) {
-    missingVars.push(varName);
+    if (isDevelopment) {
+      console.log(`⚠️ Warning: ${varName} is not set, but continuing in development mode`);
+    } else {
+      missingVars.push(varName);
+    }
   }
 });
 
-if (missingVars.length) {
+if (missingVars.length && !isDevelopment) {
   console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
 } else {
-  console.log('✅ All required environment variables are present');
+  console.log('✅ All required environment variables are present or bypassed in development');
 }
 
 // Validate the connection string format

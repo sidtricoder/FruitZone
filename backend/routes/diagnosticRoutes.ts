@@ -4,6 +4,34 @@ import { pool } from '../config/database';
 const router = express.Router();
 
 /**
+ * @route   GET /api/diagnostics
+ * @desc    Base diagnostics route
+ * @access  Public - but consider restricting in production
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const diagnostics: Record<string, any> = {
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'unknown',
+      serverInfo: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        uptime: process.uptime()
+      }
+    };
+    
+    res.status(200).json(diagnostics);
+  } catch (error: any) {
+    console.error('Base diagnostics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to run base diagnostics',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   GET /api/diagnostics/database
  * @desc    Check database connection details and run test queries
  * @access  Public - but consider restricting in production

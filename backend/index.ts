@@ -61,14 +61,13 @@ if (process.env.NODE_ENV === 'production') {
     maxAge: 86400 // Cache preflight requests for 24 hours
   }));
   console.log('[FruitZone Backend] CORS configured to allow all origins in production');
-} else {
-  // In development, only allow specific origins
-  app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'], // Add your frontend URLs
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
-    credentials: true
-  }));
+} else {// In development, allow all origins
+app.use(cors({
+  origin: '*', // Allow all origins in development
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+  credentials: true
+}));
   console.log('[FruitZone Backend] CORS configured for development environment');
 }
 
@@ -145,7 +144,7 @@ async function startServer() {
     app.use('/api/test', testRoutes);
     
     app.listen(port, () => {
-      console.log(`Server is running on http://localhost:${port}`);
+      console.log(`Server is running on YOUR_DEPLOYMENT_LINK`);
       if (!dbConnected) {
         console.warn("Warning: Server is running, but is not connected to the database.");
       }
