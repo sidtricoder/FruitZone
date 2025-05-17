@@ -137,18 +137,26 @@ async function startServer() {
       res.send('FruitZone API is healthy!');
     });    // Health check routes
     app.use('/api/health', healthRoutes);
-      // Diagnostic routes
+    // Diagnostic routes
     app.use('/api/diagnostics', diagnosticRoutes);
     
     // Test routes (for development debugging)
     app.use('/api/test', testRoutes);
     
-    app.listen(port, () => {
-      console.log(`Server is running on YOUR_DEPLOYMENT_LINK`);
+    // Only start listening on a port when not running in production (Vercel)
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(port, () => {
+        console.log(`Server is running on http://localhost:${port}`);
+        if (!dbConnected) {
+          console.warn("Warning: Server is running, but is not connected to the database.");
+        }
+      });
+    } else {
+      console.log('Running in production mode (serverless)');
       if (!dbConnected) {
-        console.warn("Warning: Server is running, but is not connected to the database.");
+        console.warn("Warning: Serverless function is configured, but is not connected to the database.");
       }
-    });
+    }
 
   } catch (error) {
     console.error("Failed to start the server due to an unhandled error during startup:", error);
@@ -159,8 +167,11 @@ async function startServer() {
 }
 
 // Initialize DB connection and start the server
-if (process.env.NODE_ENV !== 'test') { // Avoid starting server during tests if not needed
+// For production/serverless environments (like Vercel), we don't run startServer()
+// because the serverless function handler will use the exported app
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     startServer();
 }
 
-export default app; // For Vercel deployment
+// This is what gets used in serverless environments like Vercel
+export default app;

@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npm run build",  "builds": [
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "builds": [
     {
       "src": "dist/index.js",
       "use": "@vercel/node",
@@ -8,8 +10,7 @@
         "includeFiles": ["dist/**"]
       }
     }
-  ],
-  "routes": [    {
+  ],  "routes": [{
       "src": "/api/(.*)",
       "dest": "dist/index.js",
       "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -20,15 +21,8 @@
       }
     },
     {
-      "src": "^/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "dist/index.js"
     }
   ]
 }

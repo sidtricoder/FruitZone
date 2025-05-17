@@ -19,7 +19,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "allowSyntheticDefaultImports": true
-  },
-  "include": ["src/**/*.ts"],
+  },  "include": ["**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]
 }

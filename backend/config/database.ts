@@ -3,14 +3,19 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Debug the environment file path to make sure we're loading from the right place
-const envPath = path.resolve(__dirname, '../../.env');
-console.log(`Attempting to load environment from: ${envPath}`);
-console.log(`Environment file exists: ${fs.existsSync(envPath)}`);
-
-// Load environment variables
-console.log('Loading environment variables in database.ts...');
-dotenv.config();
+// Load environment variables from .env file if it exists (for local development)
+try {
+  const envPath = path.resolve(__dirname, '../../.env');
+  console.log(`Attempting to load environment from: ${envPath}`);
+  if (fs.existsSync(envPath)) {
+    console.log(`Environment file exists: true`);
+    dotenv.config({ path: envPath });
+  } else {
+    console.log(`Environment file not found, will use environment variables set in the system`);
+  }
+} catch (error) {
+  console.log(`Error checking for .env file, will use environment variables set in the system:`, error);
+}
 
 // Validate connection string
 const connectionString = process.env.SUPABASE_DB_URL;

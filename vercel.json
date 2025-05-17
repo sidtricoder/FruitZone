@@ -8,7 +8,7 @@
   "buildCommand": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",  "rewrites": [
     { 
       "source": "/api/(.*)", 
-      "destination": "https://fruit-zone-backend-hnzgumjl3-sidtricoders-projects.vercel.app/api/$1"
+      "destination": "https://fruit-zone-backend-j7qfnwibu-sidtricoders-projects.vercel.app/api/$1"
     }
   ],
   "github": {

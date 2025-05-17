@@ -7,7 +7,7 @@
  */
 export const getApiBaseUrl = (): string => {
   // Always use the deployed backend URL
-  return 'https://fruit-zone-backend-hnzgumjl3-sidtricoders-projects.vercel.app/api';
+  return 'https://fruit-zone-backend-j7qfnwibu-sidtricoders-projects.vercel.app/api';
 };
 
 // Export API endpoints
