@@ -1,0 +1,18 @@
+# netlify.toml - Configuration for Netlify deployments
+[build]
+  base = "frontend/"
+  publish = "dist/"
+  command = "npm install && npm run build"
+
+# Redirect all API requests to the backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://server-orcin-beta.vercel.app/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

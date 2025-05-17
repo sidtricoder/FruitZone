@@ -82,9 +82,25 @@ The frontend will be available at http://localhost:5173 and will proxy API reque
 
 ## Deployment
 
-The frontend and backend are configured to be deployed separately to Vercel.
+The application is designed for deployment flexibility:
+- Frontend: Can be deployed to Render or Vercel
+- Backend: Deployed to Vercel
 
-### Frontend Deployment
+### Render Deployment (Frontend Only)
+
+1. Push your code to GitHub
+2. Sign up/log in to [Render](https://render.com/)
+3. Create a new "Static Site" and connect to your GitHub repository
+4. Configure your static site:
+   - Root Directory: `frontend`
+   - Build Command: `npm install && npm run build`
+   - Publish Directory: `dist`
+   - Environment Variables:
+     - `VITE_BACKEND_URL`: `https://server-orcin-beta.vercel.app`
+
+The frontend will work independently and connect to the backend deployed on Vercel.
+
+### Vercel Deployment
 
 1. Deploy the frontend to Vercel:
 
