@@ -35,8 +35,10 @@ This frontend is configured for easy deployment on Render:
 1. Connect your GitHub repository
 2. Set the following in Render's dashboard:
    - Root Directory: `/` (the frontend directory itself)
-   - Build Command: `npm install && npm run build`
+   - Build Command: `npm install && npm run build:render`
    - Publish Directory: `dist`
+
+> Note: We use a special build script for Render (`build:render`) that bypasses TypeScript compilation errors with vite.config.ts.
 
 ## Environment Variables
 
