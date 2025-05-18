@@ -87,6 +87,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 identities: [{
                   id: dbUser.id,
                   user_id: dbUser.id,
+                  identity_id: dbUser.id, // Added missing property
                   identity_data: { sub: dbUser.id, phone: dbUser.mobile_number },
                   provider: 'phone',
                   last_sign_in_at: dbUser.last_sign_in_at || new Date().toISOString(),
@@ -339,6 +340,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           identities: [{
             id: updatedUser.id, // or a specific identity id if you have one
             user_id: updatedUser.id,
+            identity_id: updatedUser.id, // Added missing property
             identity_data: { sub: updatedUser.id, phone: updatedUser.mobile_number }, // Or other relevant identity data
             provider: 'phone',
             last_sign_in_at: updatedUser.last_sign_in_at || new Date().toISOString(), // if available
