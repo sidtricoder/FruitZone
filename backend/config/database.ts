@@ -5,7 +5,7 @@ import fs from 'fs';
 
 // Load environment variables from .env file if it exists (for local development)
 try {
-  const envPath = path.resolve(__dirname, '../../.env');
+  const envPath = path.resolve(__dirname, '../.env'); // Changed from '../../.env'
   console.log(`Attempting to load environment from: ${envPath}`);
   if (fs.existsSync(envPath)) {
     console.log(`Environment file exists: true`);
