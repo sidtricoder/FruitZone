@@ -14,7 +14,6 @@ export default function AuthPage() {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef(null);
-  const otpContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { login, requestOtp, isAuthenticated } = useAuth();
 
@@ -35,9 +34,20 @@ export default function AuthPage() {
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    console.log('[AuthPage] Attempting to request OTP for:', mobileNumber); // Log number before formatting
+
+    // Normalize mobile number: Prepend +91 if it's a 10-digit Indian number and doesn't already start with +
+    let formattedMobileNumber = mobileNumber;
+    if (formattedMobileNumber.length === 10 && /^[6-9]\d{9}$/.test(formattedMobileNumber)) {
+      formattedMobileNumber = `+91${formattedMobileNumber}`;
+    } else if (formattedMobileNumber.length === 12 && /^91\d{10}$/.test(formattedMobileNumber) && !formattedMobileNumber.startsWith('+')) {
+      // Handles cases like 917622085960 -> +917622085960
+      formattedMobileNumber = `+${formattedMobileNumber}`;
+    }
+    console.log('[AuthPage] Sending to Supabase with formatted number:', formattedMobileNumber);
+
     try {
-      await requestOtp(mobileNumber);
+      await requestOtp(formattedMobileNumber); // Use the formatted number
       setIsOtpSent(true);
       
       // Animate OTP container using GSAP ref
@@ -103,10 +113,12 @@ export default function AuthPage() {
                 <Input
                   id="mobile"
                   type="tel"
-                  placeholder="Enter your mobile number"
+                  placeholder="Enter mobile (+91XXXXXXXXXX or XXXXXXXXXX)"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
-                  pattern="[0-9]{10}"
+                  // Loosened pattern to allow more flexibility, formatting is handled in the function
+                  pattern="^\+?[0-9]{10,13}$" 
+                  title="Enter a 10-digit number or include country code (e.g., +91)."
                   required
                   disabled={isOtpSent}
                   className="transition-all duration-200 focus:ring-2 focus:ring-primary border-gray-300 bg-white text-gray-900"
@@ -114,7 +126,7 @@ export default function AuthPage() {
               </div>
               
               {isOtpSent && (
-                <div ref={otpContainerRef} className="otp-container space-y-2"> {/* After: Removed opacity-0 h-0 overflow-hidden */}
+                <div className="otp-container space-y-2">
                   <Label htmlFor="otp" className="text-gray-800 font-medium">OTP</Label>
                   <Input
                     id="otp"

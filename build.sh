@@ -1,28 +1,12 @@
 #!/bin/bash
-# This script is used by Render to build the project
+# This script is used by Render to build the frontend only
 
-# Install dependencies for the main project
+echo "Building FruitZone Frontend..."
+
+# Install dependencies
 npm install
 
-# Install frontend dependencies
-cd frontend
-npm install
-
-# Build frontend
+# Build the frontend
 npm run build
 
-# Go back to the root
-cd ..
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Build backend
-npm run build
-
-# Go back to the root
-cd ..
-
-# Done!
-echo "Build completed successfully!"
+echo "Frontend build completed successfully!"

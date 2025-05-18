@@ -1,161 +1,51 @@
-# FruitZone
+# FruitZone Frontend
 
-A fruit shop application with separate frontend and backend deployments.
+This is the frontend portion of the FruitZone application. It's designed to work with the backend API deployed at `https://fruit-zone-backend.vercel.app`.
 
-## Project Structure
+## Development
 
-The project is split into two main directories:
-
-- `frontend/`: Contains the React frontend application
-- `backend/`: Contains the Node.js backend API
-
-## Local Development
-
-### Setting Up
-
-1. Install dependencies for both projects:
-
-```
-npm run install:all
-```
-
-Or install them separately:
-
-```
-npm run install:frontend
-npm run install:backend
-```
-
-### Running Locally
-
-#### From the Root Directory
-
-1. Start the backend server:
+To run the frontend in development mode:
 
 ```bash
-npm run dev:backend
-```
-
-2. Start the frontend development server:
-
-```bash
-npm run dev:frontend
-```
-
-#### Running Frontend Independently
-
-You can run the frontend independently from its own directory:
-
-1. Navigate to the frontend directory:
-
-```bash
-cd frontend
-```
-
-2. Install dependencies (if not already installed):
-
-```bash
+# Install dependencies
 npm install
-```
 
-3. Run the development server:
-
-```bash
+# Start development server
 npm run dev
 ```
 
-Or use the provided scripts:
-- Windows: `.\run-dev.ps1`
-- Linux/Mac: `sh run-dev.sh`
+## Building for Production
 
-```
-npm run dev:backend
-```
+To build the frontend for production:
 
-2. In a separate terminal, start the frontend development server:
+```bash
+# Install dependencies
+npm install
 
-```
-npm run dev:frontend
+# Build for production
+npm run build
 ```
 
-The frontend will be available at http://localhost:5173 and will proxy API requests to the backend at http://localhost:5002.
+The build output will be in the `dist` directory.
 
-## Deployment
+## Deployment on Render
 
-The application is designed for deployment flexibility:
-- Frontend: Can be deployed to Render or Vercel
-- Backend: Deployed to Vercel
+This frontend is configured for easy deployment on Render:
 
-### Render Deployment (Frontend Only)
-
-1. Push your code to GitHub
-2. Sign up/log in to [Render](https://render.com/)
-3. Create a new "Static Site" and connect to your GitHub repository
-4. Configure your static site:
-   - Root Directory: `frontend`
-   - Build Command: `npm install && npm run build`
+1. Connect your GitHub repository
+2. Set the following in Render's dashboard:
+   - Root Directory: `/` (the frontend directory itself)
+   - Build Command: `npm install && npm run build:render`
    - Publish Directory: `dist`
-   - Environment Variables:
-     - `VITE_BACKEND_URL`: `https://fruit-zone-backend.vercel.app`
 
-The frontend will work independently and connect to the backend deployed on Vercel.
-
-### Vercel Deployment
-
-1. Deploy the frontend to Vercel:
-
-```
-npm run deploy:frontend
-```
-
-2. Configure environment variables in the Vercel dashboard for the frontend project:
-   - Set `VITE_API_URL` to your backend deployment URL (if needed)
-
-### Backend Deployment
-
-1. Deploy the backend to Vercel:
-
-```
-npm run deploy:backend
-```
-
-2. Configure environment variables in the Vercel dashboard for the backend project:
-   - Database connection details
-   - JWT secrets
-   - Other environment-specific settings
-
-3. After deploying, update the API URL in the frontend's vercel.json file:
-
-```json
-{
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "https://fruit-zone-backend.vercel.app/api/$1"
-    }
-  ]
-}
-```
+> Note: We use a special build script for Render (`build:render`) that bypasses TypeScript compilation errors with vite.config.ts.
 
 ## Environment Variables
 
-### Frontend
+The following environment variables can be set:
 
-Create a `.env` file in the `frontend/` directory with these variables:
+- `VITE_BACKEND_URL`: The URL of the backend API (default is `https://fruit-zone-backend.vercel.app`)
 
-```
-# In development, you might want to use a local URL
-# VITE_API_URL=http://localhost:5002
-# In production, the API URL is hardcoded in lib/config.ts to use the production URL
-```
+## API Routing
 
-### Backend
-
-Create a `.env` file in the `backend/` directory with these variables:
-
-```
-PORT=5002
-SUPABASE_DB_URL=your_database_connection_string
-JWT_SECRET=your_jwt_secret
-NODE_ENV=development
-```
+In production, API requests are routed to the backend using the configuration in `vercel.json`.
