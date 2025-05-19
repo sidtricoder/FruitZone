@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 
 const HomePage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50 text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50 text-gray-800 dark:from-slate-900 dark:via-slate-800 dark:to-gray-900 dark:text-gray-200">
       {/* Hero Section */}
       <motion.section
         initial={{ opacity: 0 }}
@@ -32,12 +32,12 @@ const HomePage: React.FC = () => {
           />
         </div>
 
-        <div className="relative z-10 container mx-auto px-6 py-12 md:py-20 bg-white/60 backdrop-blur-lg rounded-xl shadow-2xl max-w-4xl">
+        <div className="relative z-10 container mx-auto px-6 py-12 md:py-20 bg-white/60 backdrop-blur-lg rounded-xl shadow-2xl max-w-4xl dark:bg-slate-800/60 dark:shadow-slate-700/50">
           <motion.h1
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.3, type: "spring", stiffness: 120 }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-600 to-red-700 mb-6 leading-tight tracking-tight"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-600 to-red-700 mb-6 leading-tight tracking-tight dark:from-amber-400 dark:via-orange-400 dark:to-red-500"
           >
             Unlock Nature's <span className="block md:inline">Concentrated Essence</span>
           </motion.h1>
@@ -45,7 +45,7 @@ const HomePage: React.FC = () => {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
-            className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-10 max-w-2xl mx-auto font-medium"
+            className="text-lg md:text-xl lg:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-2xl mx-auto font-medium"
           >
             Experience the vibrant taste and potent nutrition of meticulously dehydrated fruits & vegetables – nature's goodness, intensified.
           </motion.p>
@@ -56,7 +56,7 @@ const HomePage: React.FC = () => {
           >
             <Link
               to="/shop"
-              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transition-all duration-300 ease-in-out transform hover:scale-105 inline-flex items-center shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transition-all duration-300 ease-in-out transform hover:scale-105 inline-flex items-center shadow-lg hover:shadow-xl dark:shadow-red-500/50"
             >
               Explore the Collection <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
@@ -65,9 +65,9 @@ const HomePage: React.FC = () => {
       </motion.section>
 
       {/* Benefits Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-16 md:py-24 bg-white dark:bg-slate-800">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-orange-700 mb-12 md:mb-16">The Art of Dehydration</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-orange-700 dark:text-orange-400 mb-12 md:mb-16">The Art of Dehydration</h2>
           <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
             {[{
               title: "Peak Flavor & Aroma",
@@ -88,11 +88,11 @@ const HomePage: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.2, ease: "easeOut" }}
-                className="bg-orange-50 p-8 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col items-center text-center"
+                className="bg-orange-50 dark:bg-slate-700 p-8 rounded-xl shadow-lg hover:shadow-2xl dark:shadow-orange-500/30 transition-shadow duration-300 flex flex-col items-center text-center"
               >
-                <div className="text-5xl mb-5 p-4 bg-white rounded-full shadow-md inline-block">{benefit.icon}</div>
-                <h3 className="text-2xl font-semibold text-orange-600 mb-3">{benefit.title}</h3>
-                <p className="text-gray-700 leading-relaxed">{benefit.description}</p>
+                <div className="text-5xl mb-5 p-4 bg-white dark:bg-slate-600 rounded-full shadow-md inline-block">{benefit.icon}</div>
+                <h3 className="text-2xl font-semibold text-orange-600 dark:text-orange-400 mb-3">{benefit.title}</h3>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{benefit.description}</p>
               </motion.div>
             ))}
           </div>
@@ -100,16 +100,16 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Usage Section */}
-      <section className="py-16 md:py-24 bg-red-50">
+      <section className="py-16 md:py-24 bg-red-50 dark:bg-gray-800">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-red-700 mb-12 md:mb-16">Unleash Culinary Creativity</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-red-700 dark:text-red-400 mb-12 md:mb-16">Unleash Culinary Creativity</h2>
           <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="overflow-hidden rounded-xl shadow-2xl"
+              className="overflow-hidden rounded-xl shadow-2xl dark:shadow-red-500/30"
             >
               <img 
                 src="/static/images/home-usage-image.jpg" 
@@ -139,14 +139,14 @@ const HomePage: React.FC = () => {
               }].map((use, index) => (
                 <motion.div 
                   key={index} 
-                  className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+                  className="bg-white dark:bg-slate-700 p-6 rounded-lg shadow-md hover:shadow-lg dark:shadow-red-500/30 transition-shadow duration-300"
                   initial={{ opacity: 0, y: 20}}
                   whileInView={{ opacity:1, y: 0}}
                   viewport={{ once: true}}
                   transition={{ duration: 0.5, delay: index * 0.1 + 0.3}}
                 >
-                  <h3 className="text-xl font-semibold text-red-600 mb-2">{use.title}</h3>
-                  <p className="text-gray-600">{use.description}</p>
+                  <h3 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">{use.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300">{use.description}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -155,14 +155,14 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Call to Action - Shop Now */}
-      <section className="py-20 md:py-28 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600">
+      <section className="py-20 md:py-28 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 dark:from-amber-600 dark:via-orange-600 dark:to-red-700">
         <div className="container mx-auto px-6 text-center">
           <motion.h2 
             initial={{ opacity:0, y:20}} 
             whileInView={{opacity:1, y:0}} 
             viewport={{once: true}}
             transition={{duration:0.7, ease: "easeOut"}}
-            className="text-3xl md:text-4xl font-bold text-white mb-6"
+            className="text-3xl md:text-4xl font-bold text-white dark:text-gray-100 mb-6"
           >
             Ready to Taste the Difference?
           </motion.h2>
@@ -171,7 +171,7 @@ const HomePage: React.FC = () => {
             whileInView={{opacity:1, y:0}} 
             viewport={{once: true}}
             transition={{duration:0.7, delay: 0.2, ease: "easeOut"}}
-            className="text-lg md:text-xl text-red-100 mb-10 max-w-2xl mx-auto"
+            className="text-lg md:text-xl text-red-100 dark:text-red-200 mb-10 max-w-2xl mx-auto"
           >
             Explore our curated selection of premium dehydrated fruits and vegetables. Uncompromising quality and extraordinary flavor, delivered.
           </motion.p>
@@ -183,7 +183,7 @@ const HomePage: React.FC = () => {
           >
             <Link
               to="/shop"
-              className="bg-white hover:bg-gray-100 text-orange-600 font-bold py-3 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transition-all duration-300 ease-in-out transform hover:scale-105 inline-flex items-center shadow-xl hover:shadow-2xl"
+              className="bg-white hover:bg-gray-100 text-orange-600 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-orange-500 font-bold py-3 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transition-all duration-300 ease-in-out transform hover:scale-105 inline-flex items-center shadow-xl hover:shadow-2xl dark:shadow-orange-400/50"
             >
               Discover Our Products <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
