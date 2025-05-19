@@ -4,6 +4,7 @@ import { ShoppingBag, Search, Filter, X, Plus, Minus, Trash2 } from 'lucide-reac
 import { useNavigate } from 'react-router-dom';
 import VanillaTilt from 'vanilla-tilt'; // Import VanillaTilt
 import { gsap } from 'gsap'; // Import GSAP
+import LazyImage from '@/components/ui/LazyImage'; // Import LazyImage
 
 // Mock product data - replace with actual data fetching
 interface Product {
@@ -114,7 +115,7 @@ const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) 
       transition={{ duration: 0.5 }}
     >
       <div className="overflow-hidden">
-        <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
+        <LazyImage src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" loading="lazy" width={400} height={224} />
       </div>
       <div className="p-6">
         <h3 className="text-xl font-semibold text-primary mb-2 truncate" title={product.name}>{product.name}</h3> {/* Changed text-green-700 to text-primary */}
@@ -368,7 +369,7 @@ const ShopPage: React.FC = () => {
                 {cartItems.map(item => (
                   <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
                     <div className="flex items-center">
-                      <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
+                      <LazyImage src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4" loading="lazy" width={64} height={64} />
                       <div>
                         <h3 className="font-semibold text-foreground">{item.name}</h3> 
                         <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p>

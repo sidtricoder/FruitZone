@@ -7,6 +7,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import * as THREE from 'three'; // Import THREE
 import VANTA from 'vanta/dist/vanta.net.min'; // Import VANTA
+import LazyImage from '@/components/ui/LazyImage';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -176,27 +177,30 @@ const HomePage: React.FC = () => {
       );
     }
 
-    // Vanta.js NET effect initialization
+    // Vanta.js NET effect initialization - Optimized for performance
     if (vantaRef.current && !vantaEffect) {
       if (!prefersReducedMotionQuery.matches) { // Only init Vanta if no reduced motion
-        const effect = VANTA({
-          el: vantaRef.current,
-          THREE: THREE, // Pass THREE object to Vanta
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: false,
-          minHeight: 200.00,
-          minWidth: 200.00,
-          scale: 1.00,
-          scaleMobile: 1.00,
-          color: 0xffa500, // Orange color, adjust as needed
-          backgroundColor: 0x0, // Transparent or match hero background
-          points: 10.00,
-          maxDistance: 20.00,
-          spacing: 15.00,
-          showDots: true
-        });
-        setVantaEffect(effect);
+        // Use setTimeout to delay the initialization of Vanta.js effect after critical content has loaded
+        setTimeout(() => {
+          const effect = VANTA({
+            el: vantaRef.current,
+            THREE: THREE, // Pass THREE object to Vanta
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0xffa500, // Orange color, adjust as needed
+            backgroundColor: 0x0, // Transparent or match hero background
+            points: 8.00, // Reduced from 10 for better performance
+            maxDistance: 18.00, // Slightly reduced for better performance  
+            spacing: 18.00, // Increased spacing for better performance
+            showDots: true
+          });
+          setVantaEffect(effect);
+        }, 300); // Short delay to allow critical content to load first
       }
     }
 
@@ -369,10 +373,13 @@ const HomePage: React.FC = () => {
               // GSAP will handle animation via .usage-image class
               className="usage-image overflow-hidden rounded-xl shadow-2xl dark:shadow-red-500/30"
             >
-              <img 
+              <LazyImage 
                 src="/static/images/home-usage-image.jpg" 
                 alt="Artistic display of various dehydrated fruit and vegetable pieces in a bowl"
                 className="rounded-xl object-cover w-full h-auto max-h-[450px] md:max-h-[500px] transform hover:scale-110 transition-transform duration-500 ease-out"
+                loading="lazy"
+                width={800}
+                height={500}
               />
             </div>
             <div
