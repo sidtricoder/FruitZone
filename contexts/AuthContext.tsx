@@ -2,16 +2,22 @@ import { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabaseClient'; // Import Supabase client
 import { Session, User as SupabaseUser } from '@supabase/supabase-js'; // Import Supabase types
 
-// Potentially adapt this User interface or use SupabaseUser directly
+// Updated User interface to include profile fields
 export interface User {
-  id: string; // Supabase ID is a string (UUID)
-  mobile_number?: string; // Supabase stores this as 'phone'
-  is_verified: boolean; // Derived from phone_confirmed_at or similar
-  // Add any other fields you need from the Supabase user object
+  id: string; // Will store the INT8 ID from 'users' table as a string
+  mobile_number?: string;
+  is_verified: boolean;
+  full_name?: string;
+  default_street_address_line_1?: string;
+  default_street_address_line_2?: string | null;
+  default_city?: string;
+  default_state_province_region?: string;
+  default_postal_code?: string;
+  default_country?: string;
   app_metadata?: Record<string, any>;
   user_metadata?: Record<string, any>;
-  // Add created_at for consistency with DB schema if needed for mock user object
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface AuthContextType {
@@ -19,9 +25,11 @@ export interface AuthContextType {
   session: Session | null; // Supabase session object
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (mobileNumber: string, otp: string) => Promise<void>; // mobileNumber might be redundant if already provided for OTP
+  login: (mobileNumber: string, otp: string) => Promise<void>; 
   requestOtp: (mobileNumber: string) => Promise<void>;
   logout: () => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>; // Expose setUser
+  USE_MOCK_AUTH: boolean; // Expose USE_MOCK_AUTH
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +40,8 @@ interface AuthProviderProps {
 
 // MOCK IMPLEMENTATION FLAG - Set to true to use mock auth, false for real Supabase auth
 const USE_MOCK_AUTH = true;
+
+// Removed MOCK_USER_FALLBACK_UUID
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -49,46 +59,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (mockSessionData && mockUserData) {
           const storedUser: User = JSON.parse(mockUserData);
           if (storedUser.mobile_number) {
-            const dbCompatibleMobileNumber = storedUser.mobile_number.slice(-10); // Use last 10 digits
+            const dbCompatibleMobileNumber = storedUser.mobile_number.slice(-10);
+            // Select all relevant fields from the mock 'users' table
             const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('*')
-              .eq('mobile_number', dbCompatibleMobileNumber) // Query with 10-digit number
+              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+              .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
             if (dbError && dbError.code !== 'PGRST116') {
               console.error("[MOCK AUTH] Error fetching user during session load:", dbError);
-              // Fall through to clearing local storage
             }
 
             if (dbUser && dbUser.is_verified) {
+              let originalDbId = dbUser.id;
+              if (typeof originalDbId === 'number') {
+                originalDbId = String(originalDbId);
+              }
+
+              // UUID check and fallback removed. User ID is now the string representation of INT8.
+              const effectiveUserId = originalDbId;
+
               const contextUser: User = {
-                id: dbUser.id,
+                id: effectiveUserId,
                 mobile_number: dbUser.mobile_number, // This will be the 10-digit number from DB
                 is_verified: dbUser.is_verified,
+                full_name: dbUser.full_name,
+                default_street_address_line_1: dbUser.default_street_address_line_1,
+                default_street_address_line_2: dbUser.default_street_address_line_2,
+                default_city: dbUser.default_city,
+                default_state_province_region: dbUser.default_state_province_region,
+                default_postal_code: dbUser.default_postal_code,
+                default_country: dbUser.default_country,
                 app_metadata: dbUser.app_metadata || { provider: 'phone', providers: ['phone'] },
                 user_metadata: dbUser.user_metadata || {},
                 created_at: dbUser.created_at,
+                updated_at: dbUser.updated_at,
               };
               setUser(contextUser);
               
-              // Reconstruct session with potentially updated user data from DB
               const currentSession: Session = JSON.parse(mockSessionData);
               const supabaseStyleUser: SupabaseUser = {
-                id: dbUser.id,
+                id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
                 aud: 'authenticated',
                 role: 'authenticated',
                 email: undefined, // Assuming no email for phone auth
-                phone: dbUser.mobile_number, // This will be the 10-digit number from DB
+                phone: dbUser.mobile_number, 
                 created_at: dbUser.created_at || new Date().toISOString(),
-                updated_at: dbUser.updated_at || new Date().toISOString(),
+                updated_at: dbUser.updated_at || new Date().toISOString(), // from users table
                 app_metadata: dbUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-                user_metadata: dbUser.user_metadata || {},
+                user_metadata: { ...dbUser.user_metadata, ...{ // Merge profile data into user_metadata for SupabaseUser object for closer resemblance
+                  full_name: dbUser.full_name,
+                  default_street_address_line_1: dbUser.default_street_address_line_1,
+                  default_street_address_line_2: dbUser.default_street_address_line_2,
+                  default_city: dbUser.default_city,
+                  default_state_province_region: dbUser.default_state_province_region,
+                  default_postal_code: dbUser.default_postal_code,
+                  default_country: dbUser.default_country,
+                }},
                 identities: [{
-                  id: dbUser.id,
-                  user_id: dbUser.id,
-                  identity_id: dbUser.id, // Added missing property
-                  identity_data: { sub: dbUser.id, phone: dbUser.mobile_number },
+                  id: effectiveUserId, // Use effectiveUserId
+                  user_id: effectiveUserId, // Use effectiveUserId
+                  identity_id: effectiveUserId, // Use effectiveUserId
+                  identity_data: { sub: effectiveUserId, phone: dbUser.mobile_number },
                   provider: 'phone',
                   last_sign_in_at: dbUser.last_sign_in_at || new Date().toISOString(),
                   created_at: dbUser.created_at || new Date().toISOString(),
@@ -130,52 +163,84 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    // Real Supabase auth logic (existing code)
+    // Real Supabase auth logic
+    let isMounted = true;
     setIsLoading(true);
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      const supabaseUser = currentSession?.user;
-      if (supabaseUser) {
-        setUser({
-          id: supabaseUser.id,
-          mobile_number: supabaseUser.phone,
-          is_verified: !!supabaseUser.phone_confirmed_at || !!supabaseUser.email_confirmed_at,
-          app_metadata: supabaseUser.app_metadata,
-          user_metadata: supabaseUser.user_metadata,
-          created_at: supabaseUser.created_at,
-        });
+
+    const fetchAndSetUserWithProfile = async (supabaseAuthUser: SupabaseUser | null | undefined) => {
+      if (!isMounted) return;
+
+      if (supabaseAuthUser) {
+        let profileData: Partial<User> = {};
+        try {
+          const { data, error } = await supabase
+            .from('profiles') // Assumes 'profiles' table for real user profiles
+            .select('full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+            .eq('id', supabaseAuthUser.id) // Linked by Supabase Auth User ID (UUID)
+            .single();
+
+          if (error && error.code !== 'PGRST116') { // PGRST116 means no row found, which is fine.
+            console.error('Error fetching real user profile:', error);
+          }
+          if (data) {
+            profileData = data;
+          }
+        } catch (e) {
+            console.error("Exception fetching real user profile:", e);
+        }
+        
+        if (isMounted) {
+            setUser({
+              id: supabaseAuthUser.id,
+              mobile_number: supabaseAuthUser.phone,
+              is_verified: !!supabaseAuthUser.phone_confirmed_at || !!supabaseAuthUser.email_confirmed_at,
+              full_name: profileData.full_name || supabaseAuthUser.user_metadata?.full_name,
+              default_street_address_line_1: profileData.default_street_address_line_1,
+              default_street_address_line_2: profileData.default_street_address_line_2,
+              default_city: profileData.default_city,
+              default_state_province_region: profileData.default_state_province_region,
+              default_postal_code: profileData.default_postal_code,
+              default_country: profileData.default_country,
+              app_metadata: supabaseAuthUser.app_metadata,
+              user_metadata: supabaseAuthUser.user_metadata, // Keep original user_metadata
+              created_at: supabaseAuthUser.created_at,
+              updated_at: profileData.updated_at || supabaseAuthUser.updated_at,
+            });
+        }
       } else {
-        setUser(null);
+        if (isMounted) setUser(null);
       }
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
+    };
+
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (isMounted) {
+        setSession(currentSession);
+        // setIsLoading(true) is already set at the beginning of this block
+        await fetchAndSetUserWithProfile(currentSession?.user);
+      }
+    }).catch(error => {
+        console.error("Error in getSession:", error);
+        if(isMounted) setIsLoading(false);
     });
 
     const {
       data: { subscription: authListener },
     } = supabase.auth.onAuthStateChange(
       async (_event, currentSession) => {
-        setSession(currentSession);
-        const supabaseUser = currentSession?.user;
-        if (supabaseUser) {
-          setUser({
-            id: supabaseUser.id,
-            mobile_number: supabaseUser.phone,
-            is_verified: !!supabaseUser.phone_confirmed_at || !!supabaseUser.email_confirmed_at,
-            app_metadata: supabaseUser.app_metadata,
-            user_metadata: supabaseUser.user_metadata,
-            created_at: supabaseUser.created_at,
-          });
-        } else {
-          setUser(null);
+        if (isMounted) {
+          setSession(currentSession);
+          setIsLoading(true); // Set loading true before async profile fetch
+          await fetchAndSetUserWithProfile(currentSession?.user);
         }
-        setIsLoading(false);
       }
     );
 
     return () => {
+      isMounted = false;
       authListener?.unsubscribe();
     };
-  }, []);
+  }, []); // KEEP DEPS ARRAY EMPTY: This effect should run once on mount.
 
   const requestOtp = async (mobileNumber: string) => {
     setIsLoading(true);
@@ -267,12 +332,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     try {
       if (USE_MOCK_AUTH) {
-        const dbCompatibleMobileNumber = mobileNumber.slice(-10); // Extract last 10 digits for DB operations
+        const dbCompatibleMobileNumber = mobileNumber.slice(-10);
 
         const { data: dbUser, error: fetchError } = await supabase
           .from('users')
-          .select('*')
-          .eq('mobile_number', dbCompatibleMobileNumber) // Use 10-digit number for query
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+          .eq('mobile_number', dbCompatibleMobileNumber)
           .single();
 
         if (fetchError && fetchError.code !== 'PGRST116') {
@@ -305,10 +370,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             otp: null,
             otp_expires_at: null,
             updated_at: new Date().toISOString(),
-            // last_sign_in_at: new Date().toISOString(), // If you have such a field in 'users' table
           })
-          .eq('id', dbUser.id)
-          .select()
+          .eq('id', dbUser.id) // dbUser.id here is the original ID from the table
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
           .single();
         
         if (updateError || !updatedUser) {
@@ -316,32 +380,55 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw updateError || new Error('Failed to update user state.');
         }
 
+        let originalUpdatedId = updatedUser.id;
+        if (typeof originalUpdatedId === 'number') {
+            originalUpdatedId = String(originalUpdatedId);
+        }
+        
+        // UUID check and fallback removed. User ID is now the string representation of INT8.
+        const effectiveUserId = originalUpdatedId;
+
         const contextUser: User = {
-          id: updatedUser.id,
-          mobile_number: updatedUser.mobile_number, // This will be the 10-digit number from DB
+          id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
+          mobile_number: updatedUser.mobile_number,
           is_verified: updatedUser.is_verified,
+          full_name: updatedUser.full_name,
+          default_street_address_line_1: updatedUser.default_street_address_line_1,
+          default_street_address_line_2: updatedUser.default_street_address_line_2,
+          default_city: updatedUser.default_city,
+          default_state_province_region: updatedUser.default_state_province_region,
+          default_postal_code: updatedUser.default_postal_code,
+          default_country: updatedUser.default_country,
           app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
           user_metadata: updatedUser.user_metadata || {},
           created_at: updatedUser.created_at,
+          updated_at: updatedUser.updated_at,
         };
         setUser(contextUser);
 
         const supabaseStyleUser: SupabaseUser = {
-          id: updatedUser.id,
+          id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
           aud: 'authenticated',
           role: 'authenticated',
           email: undefined, // Or updatedUser.email if you add it
-          phone: updatedUser.mobile_number, // This will be the 10-digit number from DB
+          phone: updatedUser.mobile_number, 
           created_at: updatedUser.created_at || new Date().toISOString(),
           updated_at: updatedUser.updated_at || new Date().toISOString(),
           app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-          user_metadata: updatedUser.user_metadata || {},
-          // last_sign_in_at: updatedUser.last_sign_in_at, // if available
+          user_metadata: { ...updatedUser.user_metadata, ...{ // Merge profile data into user_metadata
+            full_name: updatedUser.full_name,
+            default_street_address_line_1: updatedUser.default_street_address_line_1,
+            default_street_address_line_2: updatedUser.default_street_address_line_2,
+            default_city: updatedUser.default_city,
+            default_state_province_region: updatedUser.default_state_province_region,
+            default_postal_code: updatedUser.default_postal_code,
+            default_country: updatedUser.default_country,
+          }},
           identities: [{
-            id: updatedUser.id, // or a specific identity id if you have one
-            user_id: updatedUser.id,
-            identity_id: updatedUser.id, // Added missing property
-            identity_data: { sub: updatedUser.id, phone: updatedUser.mobile_number }, // Or other relevant identity data
+            id: effectiveUserId, // or a specific identity id if you have one
+            user_id: effectiveUserId,
+            identity_id: effectiveUserId, // Added missing property
+            identity_data: { sub: effectiveUserId, phone: updatedUser.mobile_number }, // Or other relevant identity data
             provider: 'phone',
             last_sign_in_at: updatedUser.last_sign_in_at || new Date().toISOString(), // if available
             created_at: updatedUser.created_at || new Date().toISOString(),
@@ -431,10 +518,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user,
         session,
         isLoading,
-        isAuthenticated: !!user && user.is_verified && !!session, // Adjusted for mock flow too
+        isAuthenticated: !!user && !!session, // Or based on your specific logic for isAuthenticated
         login,
         requestOtp,
         logout,
+        setUser, // Provide setUser in context
+        USE_MOCK_AUTH, // Provide USE_MOCK_AUTH in context
       }}
     >
       {children}

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { UserCircle } from 'lucide-react'; // Added UserCircle
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -36,6 +37,9 @@ const Navbar: React.FC = () => {
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
+                <Link to="/profile" className="text-gray-600 hover:text-green-600 p-2 rounded-full">
+                  <UserCircle size={24} />
+                </Link>
                 <span className="text-sm text-muted-foreground">
                   {user?.mobile_number}
                 </span>

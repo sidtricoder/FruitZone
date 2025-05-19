@@ -25,14 +25,14 @@ const CheckoutPage: React.FC = () => {
   const { user } = useAuth(); // Example: Get user from AuthContext
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    stateProvince: '', // Added state/province
-    postalCode: '',
-    country: 'India', 
+    fullName: user?.full_name || '',
+    email: '', // Email is not in the User interface, consider adding or fetching separately
+    phone: user?.mobile_number || '',
+    address: user?.default_street_address_line_1 || '',
+    city: user?.default_city || '',
+    stateProvince: user?.default_state_province_region || '', 
+    postalCode: user?.default_postal_code || '',
+    country: user?.default_country || 'India', 
     cardNumber: '',
     expiryDate: '',
     cvv: '',
@@ -48,7 +48,24 @@ const CheckoutPage: React.FC = () => {
       console.warn('No cart items found in location state. Redirecting to shop.');
       // navigate('/shop'); // Or your shop page route
     }
-  }, [location.state, navigate]);
+
+    // Populate form with user data if available
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: user.full_name || prev.fullName,
+        phone: user.mobile_number || prev.phone,
+        address: user.default_street_address_line_1 || prev.address,
+        city: user.default_city || prev.city,
+        stateProvince: user.default_state_province_region || prev.stateProvince,
+        postalCode: user.default_postal_code || prev.postalCode,
+        country: user.default_country || prev.country,
+        // Email is not part of the user object in AuthContext, handle accordingly
+        // If user.email exists on your SupabaseUser and you add it to your User interface:
+        // email: user.email || prev.email 
+      }));
+    }
+  }, [location.state, navigate, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

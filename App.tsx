@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage")); // Import CheckoutPage
+const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // Import UserProfilePage
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <CheckoutPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <UserProfilePage />
                 </ProtectedRoute>
               } 
             />
