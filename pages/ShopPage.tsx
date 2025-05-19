@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Search, Filter } from 'lucide-react';
+import { ShoppingBag, Search, Filter, X, Plus, Minus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 // Mock product data - replace with actual data fetching
 interface Product {
@@ -10,6 +11,10 @@ interface Product {
   price: number; // Price in INR
   imageUrl: string;
   description: string;
+}
+
+interface CartItem extends Product {
+  quantity: number;
 }
 
 const mockProducts: Product[] = [
@@ -63,7 +68,7 @@ const mockProducts: Product[] = [
   }
 ];
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void }> = ({ product, onAddToCart }) => {
   return (
     <motion.div 
       className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 group"
@@ -79,7 +84,10 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <p className="text-sm text-gray-500 mb-1 capitalize">{product.category}</p>
         <p className="text-gray-800 font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p>
         <p className="text-gray-700 text-sm mb-4 h-16 overflow-hidden text-ellipsis">{product.description}</p>
-        <button className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md">
+        <button 
+          onClick={() => onAddToCart(product)}
+          className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md"
+        >
           <ShoppingBag size={18} className="mr-2" /> Add to Cart
         </button>
       </div>
@@ -91,11 +99,59 @@ const ShopPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // Simulate fetching products
   useEffect(() => {
     setProducts(mockProducts);
   }, []);
+
+  const handleAddToCart = (product: Product) => {
+    setCartItems(prevItems => {
+      const itemInCart = prevItems.find(item => item.id === product.id);
+      if (itemInCart) {
+        return prevItems.map(item =>
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prevItems, { ...product, quantity: 1 }];
+    });
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+  };
+
+  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      handleRemoveFromCart(productId);
+    } else {
+      setCartItems(prevItems =>
+        prevItems.map(item =>
+          item.id === productId ? { ...item, quantity: newQuantity } : item
+        )
+      );
+    }
+  };
+
+  const calculateCartTotal = () => {
+    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  };
+  
+  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleProceedToCheckout = () => {
+    if (cartItems.length === 0) {
+      alert("Your cart is empty. Please add items to proceed.");
+      return;
+    }
+    setIsCartOpen(false); // Close cart modal if open
+    navigate('/checkout', { state: { cartItems: cartItems } });
+  };
+
+  const toggleCart = () => setIsCartOpen(!isCartOpen);
 
   const filteredProducts = products
     .filter(product => 
@@ -108,16 +164,32 @@ const ShopPage: React.FC = () => {
   const categories = ['All', ...new Set(mockProducts.map(p => p.category))];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12"> {/* Changed py-12 to pt-24 pb-12 */}
       <div className="container mx-auto px-6">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-4xl font-bold text-center text-green-700 mb-10"
+          className="text-4xl font-bold text-center text-green-700 mb-4"
         >
           Our Dehydrated Treasures
         </motion.h1>
+        
+        {/* Cart Icon Button */}
+        <div className="flex justify-end mb-6">
+          <button 
+            onClick={toggleCart} 
+            className="relative p-2 bg-lime-500 hover:bg-lime-600 text-white rounded-full shadow-md transition-colors"
+            aria-label="Open cart"
+          >
+            <ShoppingBag size={24} />
+            {totalCartItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {totalCartItems}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Search and Filter Bar */}
         <motion.div 
@@ -160,7 +232,7 @@ const ShopPage: React.FC = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
               >
-                <ProductCard product={product} />
+                <ProductCard product={product} onAddToCart={handleAddToCart} />
               </motion.div>
             ))}
           </div>
@@ -175,6 +247,90 @@ const ShopPage: React.FC = () => {
           </motion.p>
         )}
       </div>
+
+      {/* Cart Modal */}
+      {isCartOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={toggleCart} // Close on backdrop click
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+          >
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-semibold text-green-700">Your Cart</h2>
+              <button onClick={toggleCart} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
+
+            {cartItems.length === 0 ? (
+              <p className="p-8 text-center text-gray-600">Your cart is empty.</p>
+            ) : (
+              <div className="p-6 overflow-y-auto flex-grow">
+                {cartItems.map(item => (
+                  <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
+                    <div className="flex items-center">
+                      <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
+                      <div>
+                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                        <p className="text-sm text-gray-500">₹{item.price.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                        className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <button 
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                        className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleRemoveFromCart(item.id)}
+                        className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2"
+                        aria-label="Remove item"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {cartItems.length > 0 && (
+              <div className="p-6 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-lg font-semibold text-gray-800">Total:</p>
+                  <p className="text-xl font-bold text-green-700">₹{calculateCartTotal().toLocaleString('en-IN')}</p>
+                </div>
+                <button 
+                  onClick={handleProceedToCheckout} // Updated onClick handler
+                  className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 shadow hover:shadow-md"
+                >
+                  Proceed to Checkout
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
