@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Added useRef
 import { motion } from 'framer-motion';
 import { ShoppingBag, Search, Filter, X, Plus, Minus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
+import VanillaTilt from 'vanilla-tilt'; // Import VanillaTilt
+import { gsap } from 'gsap'; // Import GSAP
 
 // Mock product data - replace with actual data fetching
 interface Product {
@@ -69,9 +71,44 @@ const mockProducts: Product[] = [
 ];
 
 const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void }> = ({ product, onAddToCart }) => {
+  const cardRef = useRef<HTMLDivElement>(null); // Ref for the card
+  const buttonRef = useRef<HTMLButtonElement>(null); // Ref for the button
+
+  useEffect(() => {
+    // Initialize VanillaTilt
+    if (cardRef.current) {
+      VanillaTilt.init(cardRef.current, {
+        max: 15, // Max tilt rotation (degrees)
+        speed: 400, // Speed of the enter/exit transition
+        glare: true, // If it should have a "glare" effect
+        "max-glare": 0.2, // Glare opacity (0 = no glare, 1 = full glare)
+        perspective: 1000, // Transform perspective, the lower the more extreme the tilt gets.
+      });
+    }
+    // Cleanup VanillaTilt on component unmount
+    return () => {
+      if (cardRef.current && (cardRef.current as any).vanillaTilt) {
+        (cardRef.current as any).vanillaTilt.destroy();
+      }
+    };
+  }, []);
+
+  const handleAddToCartClick = () => {
+    onAddToCart(product);
+    // GSAP animation for button
+    if (buttonRef.current) {
+      gsap.timeline()
+        .to(buttonRef.current, { scale: 0.9, duration: 0.1, ease: 'power1.inOut' })
+        .to(buttonRef.current, { textContent: 'Added!', duration: 0, delay: 0.1}) // Change text
+        .to(buttonRef.current, { scale: 1, duration: 0.1, ease: 'power1.inOut' })
+        .to(buttonRef.current, { textContent: 'Add to Cart', duration: 0, delay: 1.5}); // Revert text
+    }
+  };
+
   return (
     <motion.div 
-      className="bg-card rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 group" // Changed bg-white to bg-card
+      ref={cardRef} // Attach ref to the card
+      className="bg-card rounded-lg shadow-lg overflow-hidden group product-card-container" // Removed transform hover:scale-105, VanillaTilt handles this. Added product-card-container for potential GSAP scroll triggers.
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -85,8 +122,9 @@ const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) 
         <p className="text-foreground font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p> {/* Changed text-gray-800 to text-foreground */}
         <p className="text-muted-foreground text-sm mb-4 h-16 overflow-hidden text-ellipsis">{product.description}</p> {/* Changed text-gray-700 to text-muted-foreground */}
         <button 
-          onClick={() => onAddToCart(product)}
-          className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md"
+          ref={buttonRef} // Attach ref to the button
+          onClick={handleAddToCartClick} // Use the new handler
+          className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md add-to-cart-button"
           // Assuming lime is a brand color, keeping it for now. Dark mode variants for this button might be needed.
         >
           <ShoppingBag size={18} className="mr-2" /> Add to Cart
@@ -103,11 +141,60 @@ const ShopPage: React.FC = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const navigate = useNavigate(); // Initialize useNavigate
+  const shopTitleRef = useRef<HTMLHeadingElement>(null); // Ref for the shop title
+  const filtersRef = useRef<HTMLDivElement>(null); // Ref for the filters bar
 
   // Simulate fetching products
   useEffect(() => {
     setProducts(mockProducts);
-  }, []);
+
+    // GSAP Animations for Shop Page Title and Filters
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!prefersReducedMotion) {
+      if (shopTitleRef.current) {
+        gsap.fromTo(shopTitleRef.current, 
+          { opacity: 0, y: -30, filter: 'blur(5px)' }, 
+          { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8, ease: 'power3.out', delay: 0.2 }
+        );
+      }
+      if (filtersRef.current) {
+        gsap.fromTo(filtersRef.current, 
+          { opacity: 0, y: 30 }, 
+          { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', delay: 0.4 }
+        );
+      }
+    }
+
+    // Scroll-into-view for product cards (can be enhanced with ScrollTrigger)
+    // This is a basic version. For more complex stagger or individual control, use ScrollTrigger.
+    const productCards = document.querySelectorAll('.product-card-container');
+    if (productCards.length > 0 && !prefersReducedMotion) {
+      gsap.fromTo(productCards, 
+        { opacity: 0, y: 50 }, 
+        {
+          opacity: 1, 
+          y: 0, 
+          duration: 0.6, 
+          stagger: 0.15, 
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: ".product-grid-container", // A parent container for the grid
+            start: "top 80%",
+            toggleActions: "play none none none",
+            // markers: true, // for debugging
+          }
+        }
+      );
+    }
+
+    return () => {
+      // Cleanup GSAP animations
+      if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
+      if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
+      gsap.killTweensOf(productCards);
+    };
+
+  }, []); // Run once on mount
 
   const handleAddToCart = (product: Product) => {
     setCartItems(prevItems => {
@@ -168,8 +255,9 @@ const ShopPage: React.FC = () => {
     <div className="min-h-screen bg-background pt-24 pb-12"> {/* Changed bg-gray-50 to bg-background */}
       <div className="container mx-auto px-6">
         <motion.h1 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          ref={shopTitleRef} // Attach ref
+          initial={{ opacity: 0, y: -20 }} // GSAP will override this if not reduced motion
+          animate={{ opacity: 1, y: 0 }} // GSAP will override this if not reduced motion
           transition={{ duration: 0.6 }}
           className="text-4xl font-bold text-center text-primary mb-4" // Changed text-green-700 to text-primary
         >
@@ -194,10 +282,11 @@ const ShopPage: React.FC = () => {
 
         {/* Search and Filter Bar */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          ref={filtersRef} // Attach ref
+          initial={{ opacity: 0, y: 20 }} // GSAP will override this if not reduced motion
+          animate={{ opacity: 1, y: 0 }} // GSAP will override this if not reduced motion
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mb-10 p-6 bg-card rounded-xl shadow-md flex flex-col md:flex-row gap-4 items-center" // Changed bg-white to bg-card
+          className="mb-10 p-6 bg-card rounded-xl shadow-md flex flex-col md:flex-row gap-4 items-center filters-bar" // Changed bg-white to bg-card
         >
           <div className="relative flex-grow w-full md:w-auto">
             <input 
@@ -225,13 +314,12 @@ const ShopPage: React.FC = () => {
 
         {/* Product Grid */}
         {filteredProducts.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map((product, index) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 product-grid-container"> {/* Added product-grid-container for ScrollTrigger */}
+            {filteredProducts.map((product) => ( // Removed unused 'index'
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
+                // Removed initial/animate/transition for individual cards, GSAP ScrollTrigger will handle this via .product-card-container
+                className="product-card-wrapper" // Added a wrapper if needed, or apply class directly to ProductCard parent
               >
                 <ProductCard product={product} onAddToCart={handleAddToCart} />
               </motion.div>

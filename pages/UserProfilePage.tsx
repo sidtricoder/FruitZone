@@ -25,16 +25,61 @@ const UserProfilePage: React.FC = () => {
   const profileCardRef = useRef<HTMLDivElement>(null);
   const ordersCardRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const pageTitleRef = useRef<HTMLHeadingElement>(null); // Ref for the page title
 
   useEffect(() => {
-    if (profileCardRef.current) {
-      gsap.fromTo(profileCardRef.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!prefersReducedMotion) {
+      if (pageTitleRef.current) {
+        gsap.fromTo(pageTitleRef.current, 
+          { opacity: 0, y: -30, filter: 'blur(3px)' }, 
+          { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.7, ease: 'power3.out', delay: 0.1 }
+        );
+      }
+      if (profileCardRef.current) {
+        gsap.fromTo(profileCardRef.current, 
+          { opacity: 0, y: 50, scale: 0.98 }, 
+          { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: 'power3.out', delay: 0.3 }
+        );
+      }
+      // Initial animation for orders card is handled in the useEffect dependent on [orders]
+    } else {
+      // Set initial states if reduced motion is preferred
+      if (pageTitleRef.current) gsap.set(pageTitleRef.current, { opacity: 1, y: 0, filter: 'blur(0px)' });
+      if (profileCardRef.current) gsap.set(profileCardRef.current, { opacity: 1, y: 0, scale: 1 });
     }
-    if (formRef.current) {
+
+    // GSAP animations for form elements if formRef.current exists and not reduced motion
+    if (formRef.current && !prefersReducedMotion) {
+      const formElements = Array.from(formRef.current.querySelectorAll('input, button, select, textarea'));
+      gsap.fromTo(formElements,
+        { opacity: 0, x: -20 },
+        { 
+          opacity: 1, 
+          x: 0, 
+          duration: 0.5, 
+          stagger: 0.07, 
+          ease: 'power2.out', 
+          delay: 0.6 // Delay to start after card animation
+        }
+      );
     }
+
   }, [user]); // Re-run when user loads to ensure refs are set
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      // If reduced motion, ensure orders card and items are immediately visible if they exist
+      if (ordersCardRef.current) gsap.set(ordersCardRef.current, { opacity: 1, y: 0 });
+      const itemCardsNodeList = ordersCardRef.current?.querySelectorAll('.order-item-card');
+      if (itemCardsNodeList && itemCardsNodeList.length > 0) {
+        gsap.set(Array.from(itemCardsNodeList), { opacity: 1, y: 0 });
+      }
+      return; // Skip animations if reduced motion
+    }
+
     // This effect handles animations for the order history section when orders data changes.
     if (ordersCardRef.current) {
       if (orders.length > 0) {
@@ -62,6 +107,11 @@ const UserProfilePage: React.FC = () => {
                     duration: 0.5,
                     stagger: 0.1, // Stagger the animation for each card
                     ease: 'power2.out',
+                    scrollTrigger: { // Add ScrollTrigger for individual order items
+                        trigger: ordersCardRef.current, // Trigger when the orders card is in view
+                        start: "top 70%", // Start animation when 70% of the card is visible
+                        toggleActions: "play none none none",
+                    }
                   }
                 );
               }
@@ -233,14 +283,14 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">User Profile</h1>
+      <h1 ref={pageTitleRef} className="text-3xl font-bold mb-6 text-center opacity-0">User Profile</h1> {/* Added ref and initial opacity-0 for GSAP */}
       
       {error && <div className="error-toast fixed top-5 right-5 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-lg" role="alert"><p className="font-bold">Error</p><p>{error}</p></div>}
       {successMessage && <div className="success-toast fixed top-5 right-5 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md shadow-lg" role="alert"><p className="font-bold">Success</p><p>{successMessage}</p></div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <Card ref={profileCardRef} className="opacity-0">
+          <Card ref={profileCardRef} className="opacity-0"> {/* Initial opacity-0 for GSAP */}
             <CardHeader>
               <CardTitle className="text-2xl">Personal Information</CardTitle>
               <CardDescription>Manage your personal details and default shipping address.</CardDescription>
@@ -255,7 +305,7 @@ const UserProfilePage: React.FC = () => {
                       id="mobileNumber"
                       value={user.mobile_number || ''}
                       disabled
-                      className="bg-gray-100"
+                      className="bg-gray-100 dark:bg-gray-700 dark:text-gray-300" // Added dark mode background and text color
                     />
                   </div>
                   <div className="space-y-2">
@@ -358,7 +408,7 @@ const UserProfilePage: React.FC = () => {
         </div>
 
         <div className="lg:col-span-1">
-          <Card ref={ordersCardRef} className="opacity-0">
+          <Card ref={ordersCardRef} className="opacity-0"> {/* Initial opacity-0 for GSAP */}
             <CardHeader>
               <CardTitle className="text-2xl">Order History</CardTitle>
               <CardDescription>View your past orders.</CardDescription>
@@ -369,7 +419,7 @@ const UserProfilePage: React.FC = () => {
               ) : orders.length > 0 ? (
                 <div className="space-y-6">
                   {orders.map((order, index) => (
-                    <Card key={order.id} className="order-item-card opacity-0" data-index={index}>
+                    <Card key={order.id} className="order-item-card opacity-0" data-index={index}> {/* Initial opacity-0 for GSAP */}
                       <CardHeader>
                         <CardTitle className="text-lg">Order ID: {order.id}</CardTitle>
                         <CardDescription>Date: {new Date(order.created_at).toLocaleDateString()} | Status: <span className={`font-semibold ${order.status === 'Completed' ? 'text-green-600' : order.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{order.status}</span></CardDescription>
