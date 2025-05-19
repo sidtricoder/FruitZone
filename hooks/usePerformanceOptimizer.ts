@@ -64,13 +64,6 @@ export const rafThrottle = (
   let lastArgs: any[] | null = null;
   let leadingCall = false;
 
-  const cancelRaf = () => {
-    if (rafId !== null) {
-      window.cancelAnimationFrame(rafId);
-      rafId = null;
-    }
-  };
-
   return function (this: any, ...args: any[]) {
     lastArgs = args;
     
