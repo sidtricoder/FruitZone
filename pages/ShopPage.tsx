@@ -274,37 +274,37 @@ const ShopPage: React.FC = () => {
             </div>
 
             {cartItems.length === 0 ? (
-              <p className="p-8 text-center text-muted-foreground">Your cart is empty.</p> {/* Changed text-gray-600 to text-muted-foreground */} 
+              <p className="p-8 text-center text-muted-foreground">Your cart is empty.</p> 
             ) : (
               <div className="p-6 overflow-y-auto flex-grow">
                 {cartItems.map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0"> {/* Added border-border */}
+                  <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
                     <div className="flex items-center">
                       <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
                       <div>
-                        <h3 className="font-semibold text-foreground">{item.name}</h3> {/* Changed text-gray-800 to text-foreground */} 
-                        <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p> {/* Changed text-gray-500 to text-muted-foreground */} 
+                        <h3 className="font-semibold text-foreground">{item.name}</h3> 
+                        <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors" // Theme-aware button style
+                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
                         aria-label="Decrease quantity"
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span> {/* Added text-foreground */}
+                      <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span>
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors" // Theme-aware button style
+                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
                         aria-label="Increase quantity"
                       >
                         <Plus size={16} />
                       </button>
                       <button 
                         onClick={() => handleRemoveFromCart(item.id)}
-                        className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2" // Destructive action, keeping red for now
+                        className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2"
                         aria-label="Remove item"
                       >
                         <Trash2 size={18} />
@@ -316,15 +316,14 @@ const ShopPage: React.FC = () => {
             )}
 
             {cartItems.length > 0 && (
-              <div className="p-6 border-t border-border"> {/* Added border-border */}
+              <div className="p-6 border-t border-border">
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-lg font-semibold text-foreground">Total:</p> {/* Changed text-gray-800 to text-foreground */} 
-                  <p className="text-xl font-bold text-primary">₹{calculateCartTotal().toLocaleString('en-IN')}</p> {/* Changed text-green-700 to text-primary */} 
+                  <p className="text-lg font-semibold text-foreground">Total:</p> 
+                  <p className="text-xl font-bold text-primary">₹{calculateCartTotal().toLocaleString('en-IN')}</p>
                 </div>
                 <button 
-                  onClick={handleProceedToCheckout} // Updated onClick handler
+                  onClick={handleProceedToCheckout}
                   className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 shadow hover:shadow-md"
-                  // Assuming lime is brand color
                 >
                   Proceed to Checkout
                 </button>
