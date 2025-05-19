@@ -64,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Select all relevant fields from the mock 'users' table
             const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email to select
+              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email from select
               .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
@@ -339,7 +339,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const { data: dbUser, error: fetchError } = await supabase
           .from('users')
-          .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email
           .eq('mobile_number', dbCompatibleMobileNumber)
           .single();
 
@@ -375,7 +375,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id) // dbUser.id here is the original ID from the table
-          .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email
           .single();
         
         if (updateError || !updatedUser) {
