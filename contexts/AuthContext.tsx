@@ -6,6 +6,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js'; // Import
 export interface User {
   id: string; // Will store the INT8 ID from 'users' table as a string
   mobile_number?: string;
+  email?: string; // Added email field
   is_verified: boolean;
   full_name?: string;
   default_street_address_line_1?: string;
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Select all relevant fields from the mock 'users' table
             const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+              .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email to select
               .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               const contextUser: User = {
                 id: effectiveUserId,
                 mobile_number: dbUser.mobile_number, // This will be the 10-digit number from DB
+                email: dbUser.email, // Added email
                 is_verified: dbUser.is_verified,
                 full_name: dbUser.full_name,
                 default_street_address_line_1: dbUser.default_street_address_line_1,
@@ -103,7 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
                 aud: 'authenticated',
                 role: 'authenticated',
-                email: undefined, // Assuming no email for phone auth
+                email: dbUser.email, // Added email
                 phone: dbUser.mobile_number, 
                 created_at: dbUser.created_at || new Date().toISOString(),
                 updated_at: dbUser.updated_at || new Date().toISOString(), // from users table
@@ -175,7 +177,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           const { data, error } = await supabase
             .from('profiles') // Assumes 'profiles' table for real user profiles
-            .select('full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+            .select('email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email to select
             .eq('id', supabaseAuthUser.id) // Linked by Supabase Auth User ID (UUID)
             .single();
 
@@ -193,6 +195,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             setUser({
               id: supabaseAuthUser.id,
               mobile_number: supabaseAuthUser.phone,
+              email: profileData.email || supabaseAuthUser.email, // Added email
               is_verified: !!supabaseAuthUser.phone_confirmed_at || !!supabaseAuthUser.email_confirmed_at,
               full_name: profileData.full_name || supabaseAuthUser.user_metadata?.full_name,
               default_street_address_line_1: profileData.default_street_address_line_1,
@@ -336,7 +339,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         const { data: dbUser, error: fetchError } = await supabase
           .from('users')
-          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+          .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email
           .eq('mobile_number', dbCompatibleMobileNumber)
           .single();
 
@@ -372,7 +375,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id) // dbUser.id here is the original ID from the table
-          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at')
+          .select('*, email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email
           .single();
         
         if (updateError || !updatedUser) {
@@ -391,6 +394,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const contextUser: User = {
           id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
           mobile_number: updatedUser.mobile_number,
+          email: updatedUser.email, // Added email
           is_verified: updatedUser.is_verified,
           full_name: updatedUser.full_name,
           default_street_address_line_1: updatedUser.default_street_address_line_1,
@@ -410,7 +414,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           id: effectiveUserId, // Use effectiveUserId (string representation of INT8)
           aud: 'authenticated',
           role: 'authenticated',
-          email: undefined, // Or updatedUser.email if you add it
+          email: updatedUser.email, // Added email
           phone: updatedUser.mobile_number, 
           created_at: updatedUser.created_at || new Date().toISOString(),
           updated_at: updatedUser.updated_at || new Date().toISOString(),

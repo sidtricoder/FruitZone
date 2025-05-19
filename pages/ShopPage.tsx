@@ -71,7 +71,7 @@ const mockProducts: Product[] = [
 const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) => void }> = ({ product, onAddToCart }) => {
   return (
     <motion.div 
-      className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 group"
+      className="bg-card rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 group" // Changed bg-white to bg-card
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -80,13 +80,14 @@ const ProductCard: React.FC<{ product: Product; onAddToCart: (product: Product) 
         <img src={product.imageUrl} alt={product.name} className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" />
       </div>
       <div className="p-6">
-        <h3 className="text-xl font-semibold text-green-700 mb-2 truncate" title={product.name}>{product.name}</h3>
-        <p className="text-sm text-gray-500 mb-1 capitalize">{product.category}</p>
-        <p className="text-gray-800 font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p>
-        <p className="text-gray-700 text-sm mb-4 h-16 overflow-hidden text-ellipsis">{product.description}</p>
+        <h3 className="text-xl font-semibold text-primary mb-2 truncate" title={product.name}>{product.name}</h3> {/* Changed text-green-700 to text-primary */}
+        <p className="text-sm text-muted-foreground mb-1 capitalize">{product.category}</p> {/* Changed text-gray-500 to text-muted-foreground */}
+        <p className="text-foreground font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p> {/* Changed text-gray-800 to text-foreground */}
+        <p className="text-muted-foreground text-sm mb-4 h-16 overflow-hidden text-ellipsis">{product.description}</p> {/* Changed text-gray-700 to text-muted-foreground */}
         <button 
           onClick={() => onAddToCart(product)}
           className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center shadow hover:shadow-md"
+          // Assuming lime is a brand color, keeping it for now. Dark mode variants for this button might be needed.
         >
           <ShoppingBag size={18} className="mr-2" /> Add to Cart
         </button>
@@ -164,13 +165,13 @@ const ShopPage: React.FC = () => {
   const categories = ['All', ...new Set(mockProducts.map(p => p.category))];
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-12"> {/* Changed py-12 to pt-24 pb-12 */}
+    <div className="min-h-screen bg-background pt-24 pb-12"> {/* Changed bg-gray-50 to bg-background */}
       <div className="container mx-auto px-6">
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-4xl font-bold text-center text-green-700 mb-4"
+          className="text-4xl font-bold text-center text-primary mb-4" // Changed text-green-700 to text-primary
         >
           Our Dehydrated Treasures
         </motion.h1>
@@ -179,7 +180,7 @@ const ShopPage: React.FC = () => {
         <div className="flex justify-end mb-6">
           <button 
             onClick={toggleCart} 
-            className="relative p-2 bg-lime-500 hover:bg-lime-600 text-white rounded-full shadow-md transition-colors"
+            className="relative p-2 bg-lime-500 hover:bg-lime-600 text-white rounded-full shadow-md transition-colors" // Assuming lime is brand color
             aria-label="Open cart"
           >
             <ShoppingBag size={24} />
@@ -196,29 +197,29 @@ const ShopPage: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mb-10 p-6 bg-white rounded-xl shadow-md flex flex-col md:flex-row gap-4 items-center"
+          className="mb-10 p-6 bg-card rounded-xl shadow-md flex flex-col md:flex-row gap-4 items-center" // Changed bg-white to bg-card
         >
           <div className="relative flex-grow w-full md:w-auto">
             <input 
               type="text"
               placeholder="Search products..."
-              className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none transition-shadow"
+              className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" // Added bg-input, text-foreground, placeholder:text-muted-foreground, border-border
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" /> {/* Changed text-gray-400 to text-muted-foreground */}
           </div>
           <div className="relative flex-grow w-full md:w-auto">
             <select 
-              className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none appearance-none bg-white transition-shadow"
+              className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 outline-none appearance-none bg-input text-foreground transition-shadow" // Added bg-input, text-foreground, border-border
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value)}
             >
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <option key={category} value={category} className="bg-input text-foreground">{category}</option> // Added classes for options
               ))}
             </select>
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" /> {/* Changed text-gray-400 to text-muted-foreground */}
           </div>
         </motion.div>
 
@@ -241,7 +242,7 @@ const ShopPage: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="text-center text-xl text-gray-600 py-10"
+            className="text-center text-xl text-muted-foreground py-10" // Changed text-gray-600 to text-muted-foreground
           >
             No products found matching your criteria. Try adjusting your search or filters.
           </motion.p>
@@ -262,48 +263,48 @@ const ShopPage: React.FC = () => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
+            className="bg-card rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" // Changed bg-white to bg-card
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
           >
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-semibold text-green-700">Your Cart</h2>
-              <button onClick={toggleCart} className="text-gray-500 hover:text-gray-700">
+            <div className="flex justify-between items-center p-6 border-b border-border"> {/* Added border-border */}
+              <h2 className="text-2xl font-semibold text-primary">Your Cart</h2> {/* Changed text-green-700 to text-primary */} 
+              <button onClick={toggleCart} className="text-muted-foreground hover:text-foreground"> {/* Added hover:text-foreground */}
                 <X size={24} />
               </button>
             </div>
 
             {cartItems.length === 0 ? (
-              <p className="p-8 text-center text-gray-600">Your cart is empty.</p>
+              <p className="p-8 text-center text-muted-foreground">Your cart is empty.</p> {/* Changed text-gray-600 to text-muted-foreground */} 
             ) : (
               <div className="p-6 overflow-y-auto flex-grow">
                 {cartItems.map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
+                  <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0"> {/* Added border-border */}
                     <div className="flex items-center">
                       <img src={item.imageUrl} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
                       <div>
-                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                        <p className="text-sm text-gray-500">₹{item.price.toLocaleString('en-IN')}</p>
+                        <h3 className="font-semibold text-foreground">{item.name}</h3> {/* Changed text-gray-800 to text-foreground */} 
+                        <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p> {/* Changed text-gray-500 to text-muted-foreground */} 
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                        className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors"
+                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors" // Theme-aware button style
                         aria-label="Decrease quantity"
                       >
                         <Minus size={16} />
                       </button>
-                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span> {/* Added text-foreground */}
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                        className="p-1.5 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition-colors"
+                        className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors" // Theme-aware button style
                         aria-label="Increase quantity"
                       >
                         <Plus size={16} />
                       </button>
                       <button 
                         onClick={() => handleRemoveFromCart(item.id)}
-                        className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2"
+                        className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2" // Destructive action, keeping red for now
                         aria-label="Remove item"
                       >
                         <Trash2 size={18} />
@@ -315,14 +316,15 @@ const ShopPage: React.FC = () => {
             )}
 
             {cartItems.length > 0 && (
-              <div className="p-6 border-t border-gray-200">
+              <div className="p-6 border-t border-border"> {/* Added border-border */}
                 <div className="flex justify-between items-center mb-4">
-                  <p className="text-lg font-semibold text-gray-800">Total:</p>
-                  <p className="text-xl font-bold text-green-700">₹{calculateCartTotal().toLocaleString('en-IN')}</p>
+                  <p className="text-lg font-semibold text-foreground">Total:</p> {/* Changed text-gray-800 to text-foreground */} 
+                  <p className="text-xl font-bold text-primary">₹{calculateCartTotal().toLocaleString('en-IN')}</p> {/* Changed text-green-700 to text-primary */} 
                 </div>
                 <button 
                   onClick={handleProceedToCheckout} // Updated onClick handler
                   className="w-full bg-lime-500 hover:bg-lime-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 shadow hover:shadow-md"
+                  // Assuming lime is brand color
                 >
                   Proceed to Checkout
                 </button>
