@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import gsap from 'gsap';
-import { useToast } from "@/components/ui/use-toast";
 
 const UserProfilePage: React.FC = () => {
   const { user, isLoading: authLoading, setUser: setAuthUser, USE_MOCK_AUTH } = useAuth();
@@ -32,11 +31,6 @@ const UserProfilePage: React.FC = () => {
       gsap.fromTo(profileCardRef.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
     }
     if (formRef.current) {
-      const inputs = formRef.current.querySelectorAll('input');
-      inputs.forEach(input => {
-        // input.addEventListener('focus', () => anime({ targets: input, scale: 1.02, duration: 200 }));
-        // input.addEventListener('blur', () => anime({ targets: input, scale: 1, duration: 200 }));
-      });
     }
   }, [user]); // Re-run when user loads to ensure refs are set
 
