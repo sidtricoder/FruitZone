@@ -2,10 +2,12 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { UserCircle } from 'lucide-react'; // Added UserCircle
+import { UserCircle, Moon, Sun } from 'lucide-react'; // Added Moon and Sun icons
+import { useTheme } from '@/components/ThemeProvider'; // Added useTheme hook
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { theme, setTheme } = useTheme(); // Added theme state and setter
   const navRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -34,6 +36,20 @@ const Navbar: React.FC = () => {
             <Link to="/shop">
               <Button variant="ghost">Shop</Button>
             </Link>
+
+            {/* Theme Toggle Button */} 
+            <Button 
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
