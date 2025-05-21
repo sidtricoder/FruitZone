@@ -182,6 +182,9 @@ const HomePage: React.FC = () => {
       if (!prefersReducedMotionQuery.matches) { // Only init Vanta if no reduced motion
         // Use setTimeout to delay the initialization of Vanta.js effect after critical content has loaded
         setTimeout(() => {
+          // Check if we're in light mode or dark mode
+          const isDarkMode = document.documentElement.classList.contains('dark');
+          
           const effect = VANTA({
             el: vantaRef.current,
             THREE: THREE, // Pass THREE object to Vanta
@@ -193,13 +196,33 @@ const HomePage: React.FC = () => {
             scale: 1.00,
             scaleMobile: 1.00,
             color: 0xffa500, // Orange color, adjust as needed
-            backgroundColor: 0x0, // Transparent or match hero background
+            backgroundColor: isDarkMode ? 0x0 : 0xffffff, // Black in dark mode, White in light mode
             points: 8.00, // Reduced from 10 for better performance
             maxDistance: 18.00, // Slightly reduced for better performance  
             spacing: 18.00, // Increased spacing for better performance
             showDots: true
           });
+          
           setVantaEffect(effect);
+          
+          // Add a mutation observer to watch for theme changes
+          const observer = new MutationObserver(() => {
+            const newIsDarkMode = document.documentElement.classList.contains('dark');
+            if (effect) {
+              effect.setOptions({
+                backgroundColor: newIsDarkMode ? 0x0 : 0xffffff // Update background color based on theme
+              });
+            }
+          });
+          
+          observer.observe(document.documentElement, { 
+            attributes: true, 
+            attributeFilter: ['class'] 
+          });
+          
+          return () => {
+            observer.disconnect();
+          };
         }, 300); // Short delay to allow critical content to load first
       }
     }

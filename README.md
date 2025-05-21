@@ -1,4 +1,4 @@
-# FruitZone E-Commerce
+# DryDaddy E-Commerce
 
 A modern, conversion-focused e-commerce site for premium dehydrated fruits and vegetables, built with Vite.js, React, TypeScript, and Tailwind CSS.
 
