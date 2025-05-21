@@ -37,8 +37,8 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
-            <Link to="/" className="text-xl sm:text-2xl font-bold text-primary">
-              DryDaddy
+            <Link to="/" className="flex items-center"> {/* Adjusted for image alignment if needed */}
+              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-8 w-auto" /> {/* Adjust h-8 and add w-auto or specific width as needed */}
             </Link>
           </div>
 
