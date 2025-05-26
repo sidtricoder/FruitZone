@@ -1,20 +1,26 @@
-import * as React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useRef, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Moon, Sun, Menu, X as CloseIcon } from 'lucide-react'; // Added Menu and X icons
+import { UserCircle, Moon, Sun, Menu, X as CloseIcon, ShoppingCart, LogOut, User as UserIcon } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
-import { motion, AnimatePresence } from 'framer-motion'; // Import motion and AnimatePresence
+import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const navRef = React.useRef<HTMLElement>(null);
-  const mobileMenuRef = React.useRef<HTMLDivElement>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  React.useEffect(() => {
+  // Placeholder for cart item count - integrate with your cart state
+  const cartItemCount = 0; // Example: replace with actual cart count from your state management
+
+  useEffect(() => {
     if (navRef.current) {
       gsap.fromTo(navRef.current, 
         { y: -80, opacity: 0 }, 
@@ -23,34 +29,68 @@ const Navbar: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileDropdownRef]);
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+    if (isProfileDropdownOpen) setIsProfileDropdownOpen(false);
   };
 
-  // Close mobile menu on link click
+  const toggleProfileDropdown = () => {
+    setIsProfileDropdownOpen(!isProfileDropdownOpen);
+    if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+  };
+  
+  const handleLogout = async () => {
+    await logout();
+    setIsProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    navigate('/auth');
+  };
+
   const handleMobileLinkClick = () => {
     setIsMobileMenuOpen(false);
   };
+  
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/shop", label: "Our Product" },
+    { to: "/b2b", label: "B2B" }, // Assuming /b2b is a valid route
+    { to: "/whats-daddy-for", label: "What’s Daddy for" }, // Assuming /whats-daddy-for is a valid route
+    { to: "/drydaddy-who", label: "DryDaddy who?" }, // Assuming /drydaddy-who is a valid route
+  ];
 
   return (
     <nav ref={navRef} className="bg-background/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 dark:bg-background/80 opacity-0">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center"> {/* Adjusted for image alignment if needed */}
-              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" /> {/* Changed h-8 to h-12. Adjust w-auto or specific width as needed */}
+            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
+              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" />
             </Link>
           </div>
 
-          {/* Desktop Menu & Theme Toggle/User Auth */} 
+          {/* Desktop Menu */} 
           <div className="hidden md:flex items-center space-x-1 sm:space-x-2">
-            <Link to="/">
-              <Button variant="ghost" size="sm">Home</Button>
-            </Link>
-            <Link to="/shop">
-              <Button variant="ghost" size="sm">Shop</Button>
-            </Link>
+            {navLinks.map(link => (
+              <Link key={link.label} to={link.to}>
+                <Button variant="ghost" size="sm">{link.label}</Button>
+              </Link>
+            ))}
+          </div>
 
+          {/* Right side icons - Desktop */}
+          <div className="hidden md:flex items-center space-x-2">
             <Button 
               variant="ghost"
               size="icon"
@@ -64,18 +104,48 @@ const Navbar: React.FC = () => {
                 <Moon className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </Button>
+
+            <Link to="/checkout" className="relative">
+              <Button variant="ghost" size="icon" aria-label="My Cart">
+                <ShoppingCart className="h-5 w-5" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             
             {isAuthenticated ? (
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <Link to="/profile" className="text-gray-600 hover:text-green-600 p-1 sm:p-2 rounded-full">
-                  <UserCircle className="h-6 w-6 sm:h-8 sm:w-8 text-gray-700 dark:text-gray-300" />
-                </Link>
-                <span className="text-xs sm:text-sm text-muted-foreground">
-                  {user?.mobile_number}
-                </span>
-                <Button variant="outline" size="sm" onClick={logout}>
-                  Logout
+              <div className="relative" ref={profileDropdownRef}>
+                <Button variant="ghost" size="icon" onClick={toggleProfileDropdown} aria-label="User Profile">
+                  <UserCircle className="h-6 w-6 sm:h-7 sm:w-7 text-gray-700 dark:text-gray-300" />
                 </Button>
+                <AnimatePresence>
+                  {isProfileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg py-1 z-50"
+                    >
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                      >
+                        <UserIcon size={16} className="mr-2" /> My Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                      >
+                        <LogOut size={16} className="mr-2" /> Log Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <Link to="/auth">
@@ -84,27 +154,34 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */} 
+          {/* Mobile Menu Button & Icons */} 
           <div className="md:hidden flex items-center">
-            {/* Theme toggle for mobile - placed before hamburger for consistency */} 
             <Button 
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label="Toggle theme"
-              className="w-8 h-8 mr-2" // Added margin for spacing from hamburger
+              className="w-8 h-8 mr-2"
             >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
+
+            <Link to="/checkout" className="relative mr-2">
+              <Button variant="ghost" size="icon" aria-label="My Cart" onClick={handleMobileLinkClick}>
+                <ShoppingCart className="h-5 w-5" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={toggleMobileMenu}
-              aria-label="Toggle mobile menu"
+              aria-label="Toggle menu"
               className="w-8 h-8"
             >
               {isMobileMenuOpen ? <CloseIcon className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -113,38 +190,52 @@ const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu */} 
+      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             ref={mobileMenuRef}
-            initial={{ opacity: 0, y: -20 }} // Start from slightly above and faded out
-            animate={{ opacity: 1, y: 0 }} // Animate to full opacity and original position
-            exit={{ opacity: 0, y: -20 }} // Animate out to above and faded
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="md:hidden bg-background/95 dark:bg-background/95 backdrop-blur-lg shadow-lg absolute top-16 left-0 right-0 z-40 pb-4"
+            className="md:hidden bg-background/95 backdrop-blur-md shadow-lg absolute w-full top-16 left-0 z-40 overflow-hidden"
           >
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 flex flex-col items-center">
-              <Link to="/" onClick={handleMobileLinkClick}>
-                <Button variant="ghost" className="w-full justify-center py-3">Home</Button>
-              </Link>
-              <Link to="/shop" onClick={handleMobileLinkClick}>
-                <Button variant="ghost" className="w-full justify-center py-3">Shop</Button>
-              </Link>
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+              {navLinks.map(link => (
+                <Link
+                  key={link.label}
+                  to={link.to}
+                  onClick={handleMobileLinkClick}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              
               {isAuthenticated ? (
                 <>
-                  <Link to="/profile" onClick={handleMobileLinkClick}>
-                    <Button variant="ghost" className="w-full justify-center py-3 flex items-center">
-                      <UserCircle className="h-5 w-5 mr-2" /> Profile
-                    </Button>
+                  <Link
+                    to="/profile"
+                    onClick={handleMobileLinkClick}
+                    className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                  >
+                    My Profile
                   </Link>
-                  <Button variant="outline" className="w-full justify-center py-3 mt-2" onClick={() => { logout(); handleMobileLinkClick(); }}>
-                    Logout
-                  </Button>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                  >
+                    Log Out
+                  </button>
                 </>
               ) : (
-                <Link to="/auth" onClick={handleMobileLinkClick}>
-                  <Button variant="ghost" className="w-full justify-center py-3">Login</Button>
+                <Link
+                  to="/auth"
+                  onClick={handleMobileLinkClick}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                >
+                  Login
                 </Link>
               )}
             </div>
