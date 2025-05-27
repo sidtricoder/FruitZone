@@ -258,15 +258,15 @@ const Navbar: React.FC = () => {
                   >
                     My Profile
                   </Link>
-                  
-                  {isAdmin && (
+                    {isAdmin && (
                     <Link
                       to="/admin"
                       onClick={handleMobileLinkClick}
                       className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
                     >
                       Admin Dashboard
-                  </Link>
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
