@@ -37,7 +37,6 @@ interface Order {
   user_details?: {
     full_name: string;
     mobile_number: string;
-    email: string;
   };
 }
 
@@ -229,7 +228,7 @@ const AdminPage: React.FC = () => {
           // Get user details
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('full_name, mobile_number, email')
+          .select('full_name, mobile_number') // Removed email from select
           .eq('id', order.user_id)
           .single();
           
@@ -843,9 +842,6 @@ const AdminPage: React.FC = () => {
                             </div>
                             <div className="text-sm text-gray-500">
                               {order.user_details?.mobile_number || 'No phone'}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {order.user_details?.email || 'No email'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
