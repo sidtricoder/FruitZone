@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import CartModal from './components/CartModal'; // Import CartModal
 
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage")); // Import CheckoutPage
@@ -63,6 +64,7 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
+      <CartModal /> {/* Add CartModal here */}
       <Footer />
       <Toaster />
     </div>
