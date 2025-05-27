@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Search, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import VanillaTilt from 'vanilla-tilt';
 import { gsap } from 'gsap';
 import LazyImage from '@/components/ui/LazyImage';
@@ -150,7 +149,6 @@ const ShopPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const navigate = useNavigate();
   const shopTitleRef = useRef<HTMLHeadingElement>(null);
   const filtersRef = useRef<HTMLDivElement>(null);
   
