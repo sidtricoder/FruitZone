@@ -6,7 +6,6 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js'; // Import
 export interface User {
   id: string; // Will store the INT8 ID from 'users' table as a string
   mobile_number?: string;
-  //email?: string; // Added email field
   is_verified: boolean;
   full_name?: string;
   default_street_address_line_1?: string;
@@ -15,8 +14,6 @@ export interface User {
   default_state_province_region?: string;
   default_postal_code?: string;
   default_country?: string;
-  app_metadata?: Record<string, any>;
-  user_metadata?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
   admin_or_not?: boolean; // Added admin status field
@@ -77,11 +74,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
               if (typeof originalDbId === 'number') {
                 originalDbId = String(originalDbId);
               }
-              const effectiveUserId = originalDbId;
-              const contextUser: User = {
+              const effectiveUserId = originalDbId;              const contextUser: User = {
                 id: effectiveUserId,
                 mobile_number: dbUser.mobile_number,
-                //email: "", 
                 is_verified: dbUser.is_verified,
                 full_name: dbUser.full_name,
                 default_street_address_line_1: dbUser.default_street_address_line_1,
@@ -90,25 +85,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 default_state_province_region: dbUser.default_state_province_region,
                 default_postal_code: dbUser.default_postal_code,
                 default_country: dbUser.default_country,
-                app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
-                user_metadata: {}, // Default value
                 created_at: dbUser.created_at,
                 updated_at: dbUser.updated_at,
                 admin_or_not: dbUser.admin_or_not || false,
               };
               if (isMounted) setUser(contextUser);
               
-              const currentSession: Session = JSON.parse(mockSessionData);
-              const supabaseStyleUser: SupabaseUser = {
+              const currentSession: Session = JSON.parse(mockSessionData);              const supabaseStyleUser: SupabaseUser = {
                 id: effectiveUserId,
                 aud: 'authenticated',
                 role: 'authenticated',
-                //email: "",
                 phone: dbUser.mobile_number, 
                 created_at: dbUser.created_at || new Date().toISOString(),
                 updated_at: dbUser.updated_at || new Date().toISOString(),
-                app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
-                user_metadata: { // Default value, merged with profile-like data from users table
+                app_metadata: { provider: 'phone', providers: ['phone'] }, // Keeping for SupabaseUser compatibility
+                user_metadata: { // Keeping for SupabaseUser compatibility
                   full_name: dbUser.full_name,
                   default_street_address_line_1: dbUser.default_street_address_line_1,
                   default_street_address_line_2: dbUser.default_street_address_line_2,
@@ -188,12 +179,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.error("Exception fetching real user profile:", e);
       }
       
-      if (isMounted) {
-          setUser({
+      if (isMounted) {          setUser({
             id: supabaseAuthUser.id,
             mobile_number: supabaseAuthUser.phone,
-            //email: "", 
-            is_verified: !!supabaseAuthUser.phone_confirmed_at, // || !!supabaseAuthUser.email_confirmed_at,
+            is_verified: !!supabaseAuthUser.phone_confirmed_at,
             full_name: profileData.full_name || supabaseAuthUser.user_metadata?.full_name,
             default_street_address_line_1: profileData.default_street_address_line_1,
             default_street_address_line_2: profileData.default_street_address_line_2,
@@ -201,8 +190,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
             default_state_province_region: profileData.default_state_province_region,
             default_postal_code: profileData.default_postal_code,
             default_country: profileData.default_country,
-            app_metadata: supabaseAuthUser.app_metadata,
-            user_metadata: supabaseAuthUser.user_metadata,
             created_at: supabaseAuthUser.created_at,
             updated_at: profileData.updated_at || supabaseAuthUser.updated_at,
             admin_or_not: profileData.admin_or_not || false,
@@ -377,12 +364,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (typeof originalUpdatedId === 'number') {
             originalUpdatedId = String(originalUpdatedId);
         }
-        const effectiveUserId = originalUpdatedId;
-
-        const contextUser: User = {
+        const effectiveUserId = originalUpdatedId;        const contextUser: User = {
           id: effectiveUserId,
           mobile_number: updatedUser.mobile_number,
-          //email: "",
           is_verified: updatedUser.is_verified,
           full_name: updatedUser.full_name,
           default_street_address_line_1: updatedUser.default_street_address_line_1,
@@ -391,24 +375,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           default_state_province_region: updatedUser.default_state_province_region,
           default_postal_code: updatedUser.default_postal_code,
           default_country: updatedUser.default_country,
-          app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
-          user_metadata: {}, // Default value
           created_at: updatedUser.created_at,
           updated_at: updatedUser.updated_at,
           admin_or_not: updatedUser.admin_or_not || false,
         };
-        setUser(contextUser);
-
-        const supabaseStyleUser: SupabaseUser = {
+        setUser(contextUser);        const supabaseStyleUser: SupabaseUser = {
           id: effectiveUserId,
           aud: 'authenticated',
           role: 'authenticated',
-          //email: "",
           phone: updatedUser.mobile_number, 
           created_at: updatedUser.created_at || new Date().toISOString(),
           updated_at: updatedUser.updated_at || new Date().toISOString(),
-          app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
-          user_metadata: { // Default value, merged with profile-like data from users table
+          app_metadata: { provider: 'phone', providers: ['phone'] }, // Keeping for SupabaseUser compatibility 
+          user_metadata: { // Keeping for SupabaseUser compatibility
             full_name: updatedUser.full_name,
             default_street_address_line_1: updatedUser.default_street_address_line_1,
             default_street_address_line_2: updatedUser.default_street_address_line_2,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -66,7 +66,6 @@ const AdminPage: React.FC = () => {
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [isAdmin, setIsAdmin] = useState(false);
-
   // New product state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
@@ -79,101 +78,10 @@ const AdminPage: React.FC = () => {
     b2b_minimum_quantity: 25,
     is_b2b: false,
   });
-  // Check if user is admin
-  useEffect(() => {
-    // Set initial loading state
-    setLoading(prev => ({...prev, adminCheck: true}));
-    
-    const checkAdminStatus = async () => {
-      // Set timeout to ensure we don't get stuck in loading state
-      const timeoutId = setTimeout(() => {
-        console.log("Admin check timed out, resetting loading state");
-        setLoading(prev => ({...prev, adminCheck: false}));
-        if (!isAdmin) {
-          navigate('/');
-          toast({
-            title: "Access Timeout",
-            description: "Admin verification timed out. Please try again.",
-            variant: "destructive"
-          });
-        }
-      }, 3000); // 3 second timeout
-
-      if (!isAuthenticated || !user) {
-        clearTimeout(timeoutId);
-        setLoading(prev => ({...prev, adminCheck: false}));
-        setIsAdmin(false);
-        navigate('/auth'); // Redirect to login if not authenticated
-        return;
-      }
-
-      // First check: Use the admin_or_not from the user object if available
-      if (user.admin_or_not === true) {
-        clearTimeout(timeoutId);
-        setIsAdmin(true);
-        setLoading(prev => ({...prev, adminCheck: false}));
-        fetchProducts();
-        fetchOrders();
-        return;
-      }
-      
-      try {
-        // Second check: Verify with the database if user object doesn't have admin_or_not
-        const { data, error } = await supabase
-          .from('users')
-          .select('admin_or_not')
-          .eq('id', user.id)
-          .single();
-
-        clearTimeout(timeoutId);
-        setLoading(prev => ({...prev, adminCheck: false}));
-
-        if (error) {
-          console.error("Database error checking admin status:", error);
-          setIsAdmin(false);
-          navigate('/');
-          toast({
-            title: "Database Error",
-            description: "Could not verify admin status. Please try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        if (!data || data.admin_or_not !== true) {
-          console.log("User is not an admin:", user.id);
-          setIsAdmin(false);
-          navigate('/'); // Redirect non-admin users to home
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access the admin area.",
-            variant: "destructive"
-          });
-        } else {
-          setIsAdmin(true);
-          fetchProducts();
-          fetchOrders();
-        }
-      } catch (error) {
-        clearTimeout(timeoutId);
-        setLoading(prev => ({...prev, adminCheck: false}));
-        console.error("Admin check error:", error);
-        setIsAdmin(false);
-        navigate('/');
-        toast({
-          title: "Error",
-          description: "An error occurred while checking admin status.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    checkAdminStatus();
-  }, [isAuthenticated, user, navigate, toast]);
-
-  // Fetch products
-  const fetchProducts = async () => {
-    setLoading({...loading, products: true});
+  
+  // Wrap fetch functions in useCallback to stabilize them for effect dependencies
+  const fetchProducts = useCallback(async () => {
+    setLoading(prev => ({...prev, products: true}));
     try {
       const { data, error } = await supabase
         .from('products')
@@ -193,13 +101,13 @@ const AdminPage: React.FC = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading({...loading, products: false});
+      setLoading(prev => ({...prev, products: false}));
     }
-  };
+  }, [toast]);
 
-  // Fetch orders with items and user details
-  const fetchOrders = async () => {
-    setLoading({...loading, orders: true});
+  // Wrap fetchOrders in useCallback
+  const fetchOrders = useCallback(async () => {
+    setLoading(prev => ({...prev, orders: true}));
     try {
       // First get all orders
       const { data: ordersData, error: ordersError } = await supabase
@@ -224,30 +132,28 @@ const AdminPage: React.FC = () => {
               items: [],
               user_details: undefined
             };
-          }
-          // Get user details
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('full_name, mobile_number') // Removed email from select
-          .eq('id', order.user_id)
-          .single();
+          }          // Get user details - only select fields that exist in the table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('full_name, mobile_number')
+            .eq('id', order.user_id)
+            .single();
           
-        if (userError) {
-          console.error('Error fetching user details:', userError);
-          // Continue processing even if we can't get user details
-          // This prevents the entire orders fetch from failing
-        }
+          if (userError) {
+            console.error('Error fetching user details:', userError);
+            // Continue processing even if we can't get user details
+          }
           // Transform items to include product name and image
-        const items = (itemsData || []).map(item => ({
-          id: item.id,
-          order_id: item.order_id,
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.price,
-          product_name: item.product ? item.product.name : 'Unknown Product',
-          product_image: item.product ? item.product.image_url : undefined,
-        }));
-            return {
+          const items = (itemsData || []).map(item => ({
+            id: item.id,
+            order_id: item.order_id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price,
+            product_name: item.product ? item.product.name : 'Unknown Product',
+            product_image: item.product ? item.product.image_url : undefined,
+          }));
+          return {
             ...order,
             items,
             user_details: userData || undefined
@@ -272,9 +178,124 @@ const AdminPage: React.FC = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading({...loading, orders: false});
+      setLoading(prev => ({...prev, orders: false}));
     }
-  };
+  }, [toast]);
+    // Check if user is admin - with added debugging
+  useEffect(() => {
+    console.log("Admin check effect running");
+    let isMounted = true;
+    setLoading(prev => ({...prev, adminCheck: true}));
+    
+    // Set timeout to ensure we don't get stuck in loading state
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.log("Admin check timed out, resetting loading state");
+        setLoading(prev => ({...prev, adminCheck: false}));
+        // Don't navigate on timeout, just update loading state
+        toast({
+          title: "Admin check taking longer than expected",
+          description: "Please wait or try refreshing the page.",
+          variant: "default"
+        });
+      }
+    }, 8000); // Increased timeout for reliable testing
+
+    const checkAdminStatus = async () => {
+      if (!isAuthenticated || !user) {
+        if (isMounted) {
+          clearTimeout(timeoutId);
+          setLoading(prev => ({...prev, adminCheck: false}));
+          setIsAdmin(false);
+          navigate('/auth');
+        }
+        return;
+      }
+
+      console.log("Checking user admin status:", user);
+
+      // First check: Use the admin_or_not from the user object if available
+      if (user.admin_or_not === true) {
+        if (isMounted) {
+          console.log("User is admin from auth context");
+          clearTimeout(timeoutId);
+          setIsAdmin(true);
+          setLoading(prev => ({...prev, adminCheck: false}));
+          fetchProducts();
+          fetchOrders();
+        }
+        return;
+      }
+      
+      try {
+        // Second check: Verify with the database
+        console.log("Verifying admin status from database for user ID:", user.id);
+        const { data, error } = await supabase
+          .from('users')
+          .select('admin_or_not')
+          .eq('id', user.id)
+          .single();
+
+        if (!isMounted) return;
+        
+        clearTimeout(timeoutId);
+        
+        if (error) {
+          console.error("Database error checking admin status:", error);
+          setIsAdmin(false);
+          setLoading(prev => ({...prev, adminCheck: false}));
+          navigate('/');
+          toast({
+            title: "Database Error",
+            description: "Could not verify admin status. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        console.log("Admin check database result:", data);
+
+        if (!data || data.admin_or_not !== true) {
+          console.log("User is not an admin:", user.id);
+          setIsAdmin(false);
+          setLoading(prev => ({...prev, adminCheck: false}));
+          navigate('/');
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to access the admin area.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("User confirmed as admin from database");
+          setIsAdmin(true);
+          setLoading(prev => ({...prev, adminCheck: false}));
+          fetchProducts();
+          fetchOrders();
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        
+        clearTimeout(timeoutId);
+        console.error("Admin check error:", error);
+        setIsAdmin(false);
+        setLoading(prev => ({...prev, adminCheck: false}));
+        navigate('/');
+        toast({
+          title: "Error",
+          description: "An error occurred while checking admin status.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    checkAdminStatus();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [isAuthenticated, user, navigate, toast, fetchProducts, fetchOrders]);
+  // These duplicate function declarations were removed to prevent issues
 
   // Handle product search
   const filteredProducts = products.filter(product => 
