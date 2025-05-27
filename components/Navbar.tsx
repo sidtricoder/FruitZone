@@ -27,10 +27,11 @@ const Navbar: React.FC = () => {
       );
     }
   }, []);
-    // Check if user is admin using admin_or_not column
+    // Check if user is admin using admin_or_not column  // Move useAuth hook to component level
+  const auth = useAuth();
+  
   useEffect(() => {
     const checkAdminStatus = async () => {
-      const auth = useAuth();
       if (!isAuthenticated || !auth.user?.id) return;
       
       try {
@@ -48,7 +49,7 @@ const Navbar: React.FC = () => {
     };
     
     checkAdminStatus();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, auth.user?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
