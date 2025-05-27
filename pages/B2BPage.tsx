@@ -4,7 +4,6 @@ import { MessageSquare, Search, Filter } from 'lucide-react';
 import VanillaTilt from 'vanilla-tilt';
 import { gsap } from 'gsap';
 import LazyImage from '@/components/ui/LazyImage';
-import { useCart } from '@/contexts/CartContext';
 
 // Export Product interface for CartContext to use
 export interface Product {
