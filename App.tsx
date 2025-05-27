@@ -69,8 +69,7 @@ function AppContent() {
                   <UserProfilePage />
                 </ProtectedRoute>
               } 
-            />
-            <Route 
+            />            <Route 
               path="/admin" 
               element={
                 <ProtectedRoute>

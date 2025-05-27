@@ -62,10 +62,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const storedUser: User = JSON.parse(mockUserData);
           if (storedUser.mobile_number) {
             const dbCompatibleMobileNumber = storedUser.mobile_number.slice(-10);
-            // Select all relevant fields from the mock 'users' table
+      // Select all relevant fields from the mock 'users' table
       const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not') // Added admin_or_not to select
+              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not')
               .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
@@ -380,7 +380,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id) // dbUser.id here is the original ID from the table
-          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not') // Added admin_or_not
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not')
           .single();
         
         if (updateError || !updatedUser) {

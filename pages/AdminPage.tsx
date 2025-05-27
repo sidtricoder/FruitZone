@@ -80,42 +80,97 @@ const AdminPage: React.FC = () => {
     b2b_minimum_quantity: 25,
     is_b2b: false,
   });
-
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
+      // Set timeout to ensure we don't get stuck in loading state
+      const timeoutId = setTimeout(() => {
+        if (loading.adminCheck) {
+          console.log("Admin check timed out, resetting loading state");
+          setLoading({...loading, adminCheck: false});
+          if (!isAdmin) {
+            navigate('/');
+            toast({
+              title: "Access Timeout",
+              description: "Admin verification timed out. Please try again later.",
+              variant: "destructive"
+            });
+          }
+        }
+      }, 5000); // 5 second timeout
+
       if (!isAuthenticated || !user) {
         setLoading({...loading, adminCheck: false});
         setIsAdmin(false);
         navigate('/auth'); // Redirect to login if not authenticated
+        clearTimeout(timeoutId);
         return;
-      }      try {
-        // Check if user has admin role using the admin_or_not field
+      }
+
+      // First check: Use the admin_or_not from the user object if available
+      if (user.admin_or_not === true) {
+        setIsAdmin(true);
+        setLoading({...loading, adminCheck: false});
+        fetchProducts();
+        fetchOrders();
+        clearTimeout(timeoutId);
+        return;
+      }
+      
+      try {
+        // Second check: Verify with the database if user object doesn't have admin_or_not
         const { data, error } = await supabase
           .from('users')
           .select('admin_or_not')
           .eq('id', user.id)
           .single();
 
-        if (error || !data || !data.admin_or_not) {
-          console.error("Not an admin user:", error);
+        clearTimeout(timeoutId);
+
+        if (error) {
+          console.error("Database error checking admin status:", error);
           setIsAdmin(false);
+          setLoading({...loading, adminCheck: false});
+          navigate('/');
+          toast({
+            title: "Database Error",
+            description: "Could not verify admin status. Please try again later.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!data || data.admin_or_not !== true) {
+          console.log("User is not an admin:", user.id);
+          setIsAdmin(false);
+          setLoading({...loading, adminCheck: false});
           navigate('/'); // Redirect non-admin users to home
           toast({
             title: "Access Denied",
             description: "You don't have permission to access the admin area.",
             variant: "destructive"
           });
-        } else {
-          setIsAdmin(true);
-          fetchProducts();
-          fetchOrders();
+          return;
         }
+
+        // User is an admin
+        console.log("User is confirmed as admin:", user.id);
+        setIsAdmin(true);
+        fetchProducts();
+        fetchOrders();
       } catch (error) {
+        clearTimeout(timeoutId);
         console.error("Admin check error:", error);
         setIsAdmin(false);
+        setLoading({...loading, adminCheck: false});
         navigate('/');
+        toast({
+          title: "Verification Error",
+          description: "Error verifying admin status. Please try again later.",
+          variant: "destructive"
+        });
       } finally {
+        clearTimeout(timeoutId);
         setLoading({...loading, adminCheck: false});
       }
     };

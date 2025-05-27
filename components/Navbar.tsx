@@ -32,7 +32,16 @@ const Navbar: React.FC = () => {
   
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!isAuthenticated || !auth.user?.id) return;
+      if (!isAuthenticated || !auth.user?.id) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      // First check if admin status is already in the user object
+      if (auth.user.admin_or_not === true) {
+        setIsAdmin(true);
+        return;
+      }
       
       try {
         const { data, error } = await supabase
@@ -41,7 +50,17 @@ const Navbar: React.FC = () => {
           .eq('id', auth.user.id)
           .single();
           
-        setIsAdmin(!!data && data.admin_or_not && !error);
+        // Set admin status based on database result
+        const isAdminUser = !!data && data.admin_or_not === true && !error;
+        setIsAdmin(isAdminUser);
+        
+        // If there's a mismatch between context and DB, update the user in context
+        if (isAdminUser !== !!auth.user.admin_or_not) {
+          auth.setUser({
+            ...auth.user,
+            admin_or_not: isAdminUser
+          });
+        }
       } catch (error) {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);
