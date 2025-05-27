@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Product } from '@/pages/ShopPage'; // Assuming Product interface is exported from ShopPage
+import { type Product } from '@/pages/ShopPage'; // Use type import
 
 export interface CartItem extends Product {
   quantity: number;

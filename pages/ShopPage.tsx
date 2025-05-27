@@ -7,7 +7,7 @@ import { gsap } from 'gsap'; // Import GSAP
 import LazyImage from '@/components/ui/LazyImage'; // Import LazyImage
 
 // Mock product data - replace with actual data fetching
-interface Product {
+export interface Product { // Add export here
   id: string;
   name: string;
   category: string;
