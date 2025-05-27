@@ -82,38 +82,39 @@ const AdminPage: React.FC = () => {
   });
   // Check if user is admin
   useEffect(() => {
+    // Set initial loading state
+    setLoading(prev => ({...prev, adminCheck: true}));
+    
     const checkAdminStatus = async () => {
       // Set timeout to ensure we don't get stuck in loading state
       const timeoutId = setTimeout(() => {
-        if (loading.adminCheck) {
-          console.log("Admin check timed out, resetting loading state");
-          setLoading({...loading, adminCheck: false});
-          if (!isAdmin) {
-            navigate('/');
-            toast({
-              title: "Access Timeout",
-              description: "Admin verification timed out. Please try again later.",
-              variant: "destructive"
-            });
-          }
+        console.log("Admin check timed out, resetting loading state");
+        setLoading(prev => ({...prev, adminCheck: false}));
+        if (!isAdmin) {
+          navigate('/');
+          toast({
+            title: "Access Timeout",
+            description: "Admin verification timed out. Please try again.",
+            variant: "destructive"
+          });
         }
-      }, 5000); // 5 second timeout
+      }, 3000); // 3 second timeout
 
       if (!isAuthenticated || !user) {
-        setLoading({...loading, adminCheck: false});
+        clearTimeout(timeoutId);
+        setLoading(prev => ({...prev, adminCheck: false}));
         setIsAdmin(false);
         navigate('/auth'); // Redirect to login if not authenticated
-        clearTimeout(timeoutId);
         return;
       }
 
       // First check: Use the admin_or_not from the user object if available
       if (user.admin_or_not === true) {
+        clearTimeout(timeoutId);
         setIsAdmin(true);
-        setLoading({...loading, adminCheck: false});
+        setLoading(prev => ({...prev, adminCheck: false}));
         fetchProducts();
         fetchOrders();
-        clearTimeout(timeoutId);
         return;
       }
       
@@ -126,15 +127,15 @@ const AdminPage: React.FC = () => {
           .single();
 
         clearTimeout(timeoutId);
+        setLoading(prev => ({...prev, adminCheck: false}));
 
         if (error) {
           console.error("Database error checking admin status:", error);
           setIsAdmin(false);
-          setLoading({...loading, adminCheck: false});
           navigate('/');
           toast({
             title: "Database Error",
-            description: "Could not verify admin status. Please try again later.",
+            description: "Could not verify admin status. Please try again.",
             variant: "destructive"
           });
           return;
@@ -143,40 +144,33 @@ const AdminPage: React.FC = () => {
         if (!data || data.admin_or_not !== true) {
           console.log("User is not an admin:", user.id);
           setIsAdmin(false);
-          setLoading({...loading, adminCheck: false});
           navigate('/'); // Redirect non-admin users to home
           toast({
             title: "Access Denied",
             description: "You don't have permission to access the admin area.",
             variant: "destructive"
           });
-          return;
+        } else {
+          setIsAdmin(true);
+          fetchProducts();
+          fetchOrders();
         }
-
-        // User is an admin
-        console.log("User is confirmed as admin:", user.id);
-        setIsAdmin(true);
-        fetchProducts();
-        fetchOrders();
       } catch (error) {
         clearTimeout(timeoutId);
+        setLoading(prev => ({...prev, adminCheck: false}));
         console.error("Admin check error:", error);
         setIsAdmin(false);
-        setLoading({...loading, adminCheck: false});
         navigate('/');
         toast({
-          title: "Verification Error",
-          description: "Error verifying admin status. Please try again later.",
+          title: "Error",
+          description: "An error occurred while checking admin status.",
           variant: "destructive"
         });
-      } finally {
-        clearTimeout(timeoutId);
-        setLoading({...loading, adminCheck: false});
       }
     };
 
     checkAdminStatus();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, navigate, toast]);
 
   // Fetch products
   const fetchProducts = async () => {

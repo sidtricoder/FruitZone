@@ -32,36 +32,48 @@ const Navbar: React.FC = () => {
   
   useEffect(() => {
     const checkAdminStatus = async () => {
+      // First check: If not authenticated or no user ID, we're definitely not an admin
       if (!isAuthenticated || !auth.user?.id) {
         setIsAdmin(false);
         return;
       }
       
-      // First check if admin status is already in the user object
+      // Second check: Use the admin_or_not from the user object directly if it exists
       if (auth.user.admin_or_not === true) {
         setIsAdmin(true);
         return;
       }
-      
+
+      // Third check: Set a timeout to avoid getting stuck
+      const adminCheckTimeout = setTimeout(() => {
+        console.log("Admin status check timed out");
+        setIsAdmin(false); // Default to non-admin if check times out
+      }, 3000); // 3 second timeout
+
       try {
+        // Final check: Query the database
         const { data, error } = await supabase
           .from('users')
           .select('admin_or_not')
           .eq('id', auth.user.id)
           .single();
           
-        // Set admin status based on database result
+        clearTimeout(adminCheckTimeout);
+        
+        // Only set as admin if data exists, admin_or_not is true, and no error occurred
         const isAdminUser = !!data && data.admin_or_not === true && !error;
         setIsAdmin(isAdminUser);
         
         // If there's a mismatch between context and DB, update the user in context
         if (isAdminUser !== !!auth.user.admin_or_not) {
+          console.log("Updating admin status in context", isAdminUser);
           auth.setUser({
             ...auth.user,
             admin_or_not: isAdminUser
           });
         }
       } catch (error) {
+        clearTimeout(adminCheckTimeout);
         console.error("Error checking admin status:", error);
         setIsAdmin(false);
       }
