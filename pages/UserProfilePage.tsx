@@ -6,9 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import gsap from 'gsap';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { LogOut } from 'lucide-react'; // Import LogOut icon
 
 const UserProfilePage: React.FC = () => {
-  const { user, isLoading: authLoading, setUser: setAuthUser, USE_MOCK_AUTH } = useAuth();
+  const { user, isLoading: authLoading, setUser: setAuthUser, USE_MOCK_AUTH, logout } = useAuth(); // Add logout from useAuth
+  const navigate = useNavigate(); // Initialize useNavigate
   const [fullName, setFullName] = useState('');
   const [streetAddress1, setStreetAddress1] = useState('');
   const [streetAddress2, setStreetAddress2] = useState('');
@@ -26,6 +29,7 @@ const UserProfilePage: React.FC = () => {
   const ordersCardRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const pageTitleRef = useRef<HTMLHeadingElement>(null); // Ref for the page title
+  const logoutButtonRef = useRef<HTMLButtonElement>(null); // Ref for the logout button
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -73,6 +77,7 @@ const UserProfilePage: React.FC = () => {
     if (prefersReducedMotion) {
       // If reduced motion, ensure orders card and items are immediately visible if they exist
       if (ordersCardRef.current) gsap.set(ordersCardRef.current, { opacity: 1, y: 0 });
+      if (logoutButtonRef.current) gsap.set(logoutButtonRef.current, { opacity: 1, y: 0 }); // Also set logout button if reduced motion
       const itemCardsNodeList = ordersCardRef.current?.querySelectorAll('.order-item-card');
       if (itemCardsNodeList && itemCardsNodeList.length > 0) {
         gsap.set(Array.from(itemCardsNodeList), { opacity: 1, y: 0 });
@@ -113,6 +118,13 @@ const UserProfilePage: React.FC = () => {
                         toggleActions: "play none none none",
                     }
                   }
+                );
+              }
+              // Animate logout button after orders animation completes
+              if (logoutButtonRef.current && !prefersReducedMotion) {
+                gsap.fromTo(logoutButtonRef.current, 
+                  { opacity: 0, y: 20 }, 
+                  { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', delay: 0.2 }
                 );
               }
             }
@@ -273,6 +285,11 @@ const UserProfilePage: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/auth'); // Redirect to login page after logout
+  };
+
   if (authLoading) {
     return <div className="flex justify-center items-center h-screen"><p>Loading authentication details...</p></div>;
   }
@@ -407,7 +424,7 @@ const UserProfilePage: React.FC = () => {
           </Card>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6"> {/* Added space-y-6 for spacing between card and button */}
           <Card ref={ordersCardRef} className="opacity-0"> {/* Initial opacity-0 for GSAP */}
             <CardHeader>
               <CardTitle className="text-2xl">Order History</CardTitle>
@@ -447,6 +464,16 @@ const UserProfilePage: React.FC = () => {
               )}
             </CardContent>
           </Card>
+          {/* Logout Button below Order History */}
+          <Button 
+            ref={logoutButtonRef} 
+            onClick={handleLogout} 
+            variant="outline" 
+            className="w-full opacity-0 flex items-center justify-center space-x-2 hover:bg-red-500 hover:text-white transition-colors duration-200 ease-in-out group"
+          >
+            <LogOut size={18} className="group-hover:text-white transition-colors duration-200 ease-in-out" />
+            <span>Log Out</span>
+          </Button>
         </div>
       </div>
     </div>
