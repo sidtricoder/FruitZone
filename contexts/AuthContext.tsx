@@ -6,7 +6,7 @@ import { Session, User as SupabaseUser } from '@supabase/supabase-js'; // Import
 export interface User {
   id: string; // Will store the INT8 ID from 'users' table as a string
   mobile_number?: string;
-  email?: string; // Added email field
+  //email?: string; // Added email field
   is_verified: boolean;
   full_name?: string;
   default_street_address_line_1?: string;
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               const contextUser: User = {
                 id: effectiveUserId,
                 mobile_number: dbUser.mobile_number,
-                email: "", 
+                //email: "", 
                 is_verified: dbUser.is_verified,
                 full_name: dbUser.full_name,
                 default_street_address_line_1: dbUser.default_street_address_line_1,
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 id: effectiveUserId,
                 aud: 'authenticated',
                 role: 'authenticated',
-                email: "",
+                //email: "",
                 phone: dbUser.mobile_number, 
                 created_at: dbUser.created_at || new Date().toISOString(),
                 updated_at: dbUser.updated_at || new Date().toISOString(),
@@ -192,8 +192,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser({
             id: supabaseAuthUser.id,
             mobile_number: supabaseAuthUser.phone,
-            email: "", 
-            is_verified: !!supabaseAuthUser.phone_confirmed_at || !!supabaseAuthUser.email_confirmed_at,
+            //email: "", 
+            is_verified: !!supabaseAuthUser.phone_confirmed_at, // || !!supabaseAuthUser.email_confirmed_at,
             full_name: profileData.full_name || supabaseAuthUser.user_metadata?.full_name,
             default_street_address_line_1: profileData.default_street_address_line_1,
             default_street_address_line_2: profileData.default_street_address_line_2,
@@ -382,7 +382,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const contextUser: User = {
           id: effectiveUserId,
           mobile_number: updatedUser.mobile_number,
-          email: "",
+          //email: "",
           is_verified: updatedUser.is_verified,
           full_name: updatedUser.full_name,
           default_street_address_line_1: updatedUser.default_street_address_line_1,
@@ -403,7 +403,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           id: effectiveUserId,
           aud: 'authenticated',
           role: 'authenticated',
-          email: "",
+          //email: "",
           phone: updatedUser.mobile_number, 
           created_at: updatedUser.created_at || new Date().toISOString(),
           updated_at: updatedUser.updated_at || new Date().toISOString(),
