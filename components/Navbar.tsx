@@ -3,22 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/contexts/CartContext'; // Import useCart
 import { Button } from '@/components/ui/button';
-import { UserCircle, Moon, Sun, Menu, X as CloseIcon, ShoppingCart, LogOut, User as UserIcon } from 'lucide-react';
+import { UserCircle, Moon, Sun, Menu, X as CloseIcon, ShoppingCart, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
+import { supabase } from '@/lib/supabaseClient';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { totalItems, toggleCart } = useCart(); // Get cart data from context
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);  const navRef = useRef<HTMLElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
+  const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     if (navRef.current) {
       gsap.fromTo(navRef.current, 
@@ -27,6 +27,28 @@ const Navbar: React.FC = () => {
       );
     }
   }, []);
+  
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!isAuthenticated || !useAuth().user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('user_id', useAuth().user.id)
+          .single();
+          
+        setIsAdmin(!!data && !error);
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -132,14 +154,22 @@ const Navbar: React.FC = () => {
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                       className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg py-1 z-50"
-                    >
-                      <Link
+                    >                      <Link
                         to="/profile"
                         className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
                         onClick={() => setIsProfileDropdownOpen(false)}
                       >
                         <UserIcon size={16} className="mr-2" /> My Profile
                       </Link>
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          <Settings size={16} className="mr-2" /> Admin Dashboard
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
@@ -220,8 +250,7 @@ const Navbar: React.FC = () => {
                   {link.label}
                 </Link>
               ))}
-              
-              {isAuthenticated ? (
+                {isAuthenticated ? (
                 <>
                   <Link
                     to="/profile"
@@ -229,6 +258,15 @@ const Navbar: React.FC = () => {
                     className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
                   >
                     My Profile
+                  </Link>
+                  
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={handleMobileLinkClick}
+                      className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                    >
+                      Admin Dashboard
                   </Link>
                   <button
                     onClick={handleLogout}
