@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/contexts/CartContext'; // Import useCart
 import { Button } from '@/components/ui/button';
 import { UserCircle, Moon, Sun, Menu, X as CloseIcon, ShoppingCart, LogOut, User as UserIcon } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
@@ -10,15 +11,13 @@ import { gsap } from 'gsap';
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { totalItems, toggleCart: openCartModal } = useCart(); // Get cart state and actions
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
-  // Placeholder for cart item count - integrate with your cart state
-  const cartItemCount = 0; // Example: replace with actual cart count from your state management
 
   useEffect(() => {
     if (navRef.current) {
@@ -105,16 +104,15 @@ const Navbar: React.FC = () => {
               )}
             </Button>
 
-            <Link to="/checkout" className="relative">
-              <Button variant="ghost" size="icon" aria-label="My Cart">
-                <ShoppingCart className="h-5 w-5" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                    {cartItemCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            {/* Updated Cart Link/Button to use toggleCart from context */}
+            <Button variant="ghost" size="icon" aria-label="My Cart" onClick={openCartModal} className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
             
             {isAuthenticated ? (
               <div className="relative" ref={profileDropdownRef}>
@@ -166,16 +164,15 @@ const Navbar: React.FC = () => {
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            <Link to="/checkout" className="relative mr-2">
-              <Button variant="ghost" size="icon" aria-label="My Cart" onClick={handleMobileLinkClick}>
-                <ShoppingCart className="h-5 w-5" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                    {cartItemCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
+            {/* Updated Mobile Cart Link/Button to use toggleCart from context */}
+            <Button variant="ghost" size="icon" aria-label="My Cart" onClick={() => { openCartModal(); handleMobileLinkClick(); }} className="relative mr-2">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
 
             <Button 
               variant="ghost" 
