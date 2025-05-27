@@ -11,7 +11,7 @@ import { gsap } from 'gsap';
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const { totalItems, toggleCart: openCartModal } = useCart(); // Get cart state and actions
+  const { totalItems, toggleCart } = useCart(); // Get cart data from context
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -104,8 +104,13 @@ const Navbar: React.FC = () => {
               )}
             </Button>
 
-            {/* Updated Cart Link/Button to use toggleCart from context */}
-            <Button variant="ghost" size="icon" aria-label="My Cart" onClick={openCartModal} className="relative">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleCart} // Use toggleCart from context
+              aria-label="My Cart" 
+              className="relative"
+            >
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
@@ -165,7 +170,13 @@ const Navbar: React.FC = () => {
             </Button>
 
             {/* Updated Mobile Cart Link/Button to use toggleCart from context */}
-            <Button variant="ghost" size="icon" aria-label="My Cart" onClick={() => { openCartModal(); handleMobileLinkClick(); }} className="relative mr-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => { toggleCart(); handleMobileLinkClick(); }} // Use toggleCart from context
+              aria-label="My Cart"
+              className="relative mr-2"
+            >
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
