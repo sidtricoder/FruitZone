@@ -89,17 +89,15 @@ const AdminPage: React.FC = () => {
         setIsAdmin(false);
         navigate('/auth'); // Redirect to login if not authenticated
         return;
-      }
-
-      try {
-        // Check if user has admin role
+      }      try {
+        // Check if user has admin role using the admin_or_not field
         const { data, error } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('user_id', user.id)
+          .from('users')
+          .select('admin_or_not')
+          .eq('id', user.id)
           .single();
 
-        if (error || !data) {
+        if (error || !data || !data.admin_or_not) {
           console.error("Not an admin user:", error);
           setIsAdmin(false);
           navigate('/'); // Redirect non-admin users to home
@@ -162,44 +160,59 @@ const AdminPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
-      
-      // For each order, get order items and user details
+        // For each order, get order items and user details
       const completeOrders = await Promise.all((ordersData || []).map(async (order) => {
-        // Get order items
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('order_items')
-          .select('*, product:product_id(name, image_url)')
-          .eq('order_id', order.id);
-          
-        if (itemsError) throw itemsError;
-        
-        // Get user details
+        try {
+          // Get order items
+          const { data: itemsData, error: itemsError } = await supabase
+            .from('order_items')
+            .select('*, product:product_id(name, image_url)')
+            .eq('order_id', order.id);
+            
+          if (itemsError) {
+            console.error('Error fetching order items:', itemsError);
+            return {
+              ...order,
+              items: [],
+              user_details: undefined
+            };
+          }
+          // Get user details
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('full_name, mobile_number, email')
           .eq('id', order.user_id)
           .single();
           
-        if (userError && userError.code !== 'PGRST116') {
+        if (userError) {
           console.error('Error fetching user details:', userError);
+          // Continue processing even if we can't get user details
+          // This prevents the entire orders fetch from failing
         }
-        
-        // Transform items to include product name and image
+          // Transform items to include product name and image
         const items = (itemsData || []).map(item => ({
           id: item.id,
           order_id: item.order_id,
           product_id: item.product_id,
           quantity: item.quantity,
           price: item.price,
-          product_name: item.product?.name || 'Unknown Product',
-          product_image: item.product?.image_url,
+          product_name: item.product ? item.product.name : 'Unknown Product',
+          product_image: item.product ? item.product.image_url : undefined,
         }));
-        
-        return {
-          ...order,
-          items,
-          user_details: userData || undefined
-        };
+            return {
+            ...order,
+            items,
+            user_details: userData || undefined
+          };
+        } catch (orderError) {
+          console.error(`Error processing order ${order.id}:`, orderError);
+          // Return the order with empty items rather than failing the entire process
+          return {
+            ...order,
+            items: [],
+            user_details: undefined
+          };
+        }
       }));
       
       setOrders(completeOrders);

@@ -19,6 +19,7 @@ export interface User {
   user_metadata?: Record<string, any>;
   created_at?: string;
   updated_at?: string;
+  admin_or_not?: boolean; // Added admin status field
 }
 
 export interface AuthContextType {
@@ -62,9 +63,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (storedUser.mobile_number) {
             const dbCompatibleMobileNumber = storedUser.mobile_number.slice(-10);
             // Select all relevant fields from the mock 'users' table
-            const { data: dbUser, error: dbError } = await supabase
+      const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email from select
+              .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not') // Added admin_or_not to select
               .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
@@ -79,9 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               }
 
               // UUID check and fallback removed. User ID is now the string representation of INT8.
-              const effectiveUserId = originalDbId;
-
-              const contextUser: User = {
+              const effectiveUserId = originalDbId;              const contextUser: User = {
                 id: effectiveUserId,
                 mobile_number: dbUser.mobile_number, // This will be the 10-digit number from DB
                 email: dbUser.email, // Added email
@@ -97,6 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 user_metadata: dbUser.user_metadata || {},
                 created_at: dbUser.created_at,
                 updated_at: dbUser.updated_at,
+                admin_or_not: dbUser.admin_or_not || false, // Added admin status
               };
               setUser(contextUser);
               
@@ -167,15 +167,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Real Supabase auth logic
     let isMounted = true;
-    setIsLoading(true);
-
-    const fetchAndSetUserWithProfile = async (supabaseAuthUser: SupabaseUser | null | undefined) => {
+    setIsLoading(true);    const fetchAndSetUserWithProfile = async (supabaseAuthUser: SupabaseUser | null | undefined) => {
       if (!isMounted) return;
 
       if (supabaseAuthUser) {
         let profileData: Partial<User> = {};
-        try {
-          const { data, error } = await supabase
+        try {          // First check if user has admin rights in the users table
+          const { data: adminData, error: adminError } = await supabase
+            .from('users')
+            .select('admin_or_not')
+            .eq('id', supabaseAuthUser.id)
+            .single();
+              // Then get the profile data
+          const { data: profileResult, error } = await supabase
             .from('profiles') // Assumes 'profiles' table for real user profiles
             .select('email, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Added email to select
             .eq('id', supabaseAuthUser.id) // Linked by Supabase Auth User ID (UUID)
@@ -184,15 +188,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (error && error.code !== 'PGRST116') { // PGRST116 means no row found, which is fine.
             console.error('Error fetching real user profile:', error);
           }
-          if (data) {
-            profileData = data;
+          if (profileResult) {
+            profileData = profileResult;
+          }
+          
+          // Add admin status to profileData
+          if (adminData && !adminError) {
+            profileData.admin_or_not = adminData.admin_or_not || false;
           }
         } catch (e) {
             console.error("Exception fetching real user profile:", e);
         }
         
-        if (isMounted) {
-            setUser({
+        if (isMounted) {            setUser({
               id: supabaseAuthUser.id,
               mobile_number: supabaseAuthUser.phone,
               email: profileData.email || supabaseAuthUser.email, // Added email
@@ -208,6 +216,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               user_metadata: supabaseAuthUser.user_metadata, // Keep original user_metadata
               created_at: supabaseAuthUser.created_at,
               updated_at: profileData.updated_at || supabaseAuthUser.updated_at,
+              admin_or_not: profileData.admin_or_not || false, // Add admin status
             });
         }
       } else {
@@ -335,11 +344,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
     try {
       if (USE_MOCK_AUTH) {
-        const dbCompatibleMobileNumber = mobileNumber.slice(-10);
-
-        const { data: dbUser, error: fetchError } = await supabase
+        const dbCompatibleMobileNumber = mobileNumber.slice(-10);        const { data: dbUser, error: fetchError } = await supabase
           .from('users')
-          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not') // Added admin_or_not to select
           .eq('mobile_number', dbCompatibleMobileNumber)
           .single();
 
@@ -363,9 +370,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Optionally clear the expired OTP from DB
           await supabase.from('users').update({ otp: null, otp_expires_at: null, updated_at: new Date().toISOString() }).eq('id', dbUser.id);
           throw new Error('OTP expired.');
-        }
-
-        // OTP is valid, update user to verified and clear OTP
+        }        // OTP is valid, update user to verified and clear OTP
         const { data: updatedUser, error: updateError } = await supabase
           .from('users')
           .update({
@@ -375,7 +380,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id) // dbUser.id here is the original ID from the table
-          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at') // Removed explicit email
+          .select('*, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, updated_at, admin_or_not') // Added admin_or_not
           .single();
         
         if (updateError || !updatedUser) {
@@ -402,11 +407,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           default_city: updatedUser.default_city,
           default_state_province_region: updatedUser.default_state_province_region,
           default_postal_code: updatedUser.default_postal_code,
-          default_country: updatedUser.default_country,
-          app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
+          default_country: updatedUser.default_country,          app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
           user_metadata: updatedUser.user_metadata || {},
           created_at: updatedUser.created_at,
           updated_at: updatedUser.updated_at,
+          admin_or_not: updatedUser.admin_or_not || false, // Added admin status
         };
         setUser(contextUser);
 

@@ -27,20 +27,19 @@ const Navbar: React.FC = () => {
       );
     }
   }, []);
-  
-  // Check if user is admin
+    // Check if user is admin using admin_or_not column
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!isAuthenticated || !useAuth().user?.id) return;
       
       try {
         const { data, error } = await supabase
-          .from('admin_users')
-          .select('*')
-          .eq('user_id', useAuth().user.id)
+          .from('users')
+          .select('admin_or_not')
+          .eq('id', useAuth().user.id)
           .single();
           
-        setIsAdmin(!!data && !error);
+        setIsAdmin(!!data && data.admin_or_not && !error);
       } catch (error) {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);
