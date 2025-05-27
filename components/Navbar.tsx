@@ -30,13 +30,14 @@ const Navbar: React.FC = () => {
     // Check if user is admin using admin_or_not column
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (!isAuthenticated || !useAuth().user?.id) return;
+      const auth = useAuth();
+      if (!isAuthenticated || !auth.user?.id) return;
       
       try {
         const { data, error } = await supabase
           .from('users')
           .select('admin_or_not')
-          .eq('id', useAuth().user.id)
+          .eq('id', auth.user.id)
           .single();
           
         setIsAdmin(!!data && data.admin_or_not && !error);

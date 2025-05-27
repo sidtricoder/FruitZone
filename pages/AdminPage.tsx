@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Package, ShoppingBag, PlusCircle, Edit, Trash2, Search, 
+  Package, ShoppingBag, Edit, Trash2, Search, 
   CheckCircle, XCircle, Clock, Filter, Save, ImagePlus, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -268,11 +268,9 @@ const AdminPage: React.FC = () => {
           variant: "destructive"
         });
         return;
-      }
-
-      if (editingProduct) {
+      }      if (editingProduct) {
         // Update existing product
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('products')
           .update({
             name: newProduct.name,
@@ -293,10 +291,9 @@ const AdminPage: React.FC = () => {
         toast({
           title: "Product updated",
           description: `${newProduct.name} has been successfully updated.`
-        });
-      } else {
+        });      } else {
         // Create new product
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('products')
           .insert([{
             name: newProduct.name,
