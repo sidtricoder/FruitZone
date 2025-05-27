@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, CreditCard, User, Home, Mail, Phone } from 'lucide-react';
+import { Lock, CreditCard, User, Home, Phone } from 'lucide-react'; // Removed Mail
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 
@@ -26,7 +26,6 @@ const CheckoutPage: React.FC = () => {
 
   const [formData, setFormData] = useState({
     fullName: '',
-    email: '', 
     phone: '',
     address: '',
     city: '',
@@ -51,7 +50,6 @@ const CheckoutPage: React.FC = () => {
       setFormData(prev => ({
         ...prev,
         fullName: user.full_name || prev.fullName,
-        email: user.email || prev.email, // Populate email from user context
         phone: user.mobile_number || prev.phone,
         address: user.default_street_address_line_1 || prev.address,
         city: user.default_city || prev.city,
@@ -173,13 +171,7 @@ const CheckoutPage: React.FC = () => {
                   <input type="text" name="fullName" id="fullName" value={formData.fullName} onChange={handleInputChange} required className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 bg-input text-foreground placeholder:text-muted-foreground" /> 
                 </div>
               </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-1">Email Address</label> 
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" /> 
-                  <input type="email" name="email" id="email" value={formData.email} onChange={handleInputChange} required className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 bg-input text-foreground placeholder:text-muted-foreground" /> 
-                </div>
-              </div>
+              {/* Removed Email Input Field */}
             </div>
 
             <div className="mb-6">
