@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 import CartModal from './components/CartModal'; // Import CartModal
 
 const ShopPage = lazy(() => import("./pages/ShopPage"));
+const B2BPage = lazy(() => import("./pages/B2BPage")); // Import B2BPage
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage")); // Import CheckoutPage
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // Import UserProfilePage
 
@@ -33,8 +34,7 @@ function AppContent() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-grow">
-        <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-green-500"></div></div>}>
-          <Routes>
+        <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-green-500"></div></div>}>          <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route 
@@ -42,6 +42,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ShopPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/b2b" 
+              element={
+                <ProtectedRoute>
+                  <B2BPage />
                 </ProtectedRoute>
               } 
             />
