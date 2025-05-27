@@ -64,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const dbCompatibleMobileNumber = storedUser.mobile_number.slice(-10);
             const { data: dbUser, error: dbError } = await supabase
               .from('users')
-              .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not, app_metadata, user_metadata')
+              .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not')
               .eq('mobile_number', dbCompatibleMobileNumber)
               .single();
 
@@ -90,8 +90,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 default_state_province_region: dbUser.default_state_province_region,
                 default_postal_code: dbUser.default_postal_code,
                 default_country: dbUser.default_country,
-                app_metadata: dbUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-                user_metadata: dbUser.user_metadata || {},
+                app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
+                user_metadata: {}, // Default value
                 created_at: dbUser.created_at,
                 updated_at: dbUser.updated_at,
                 admin_or_not: dbUser.admin_or_not || false,
@@ -107,8 +107,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 phone: dbUser.mobile_number, 
                 created_at: dbUser.created_at || new Date().toISOString(),
                 updated_at: dbUser.updated_at || new Date().toISOString(),
-                app_metadata: dbUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-                user_metadata: { ...dbUser.user_metadata, ...{
+                app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
+                user_metadata: { // Default value, merged with profile-like data from users table
                   full_name: dbUser.full_name,
                   default_street_address_line_1: dbUser.default_street_address_line_1,
                   default_street_address_line_2: dbUser.default_street_address_line_2,
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                   default_state_province_region: dbUser.default_state_province_region,
                   default_postal_code: dbUser.default_postal_code,
                   default_country: dbUser.default_country,
-                }},
+                },
                 identities: [{
                   id: effectiveUserId,
                   user_id: effectiveUserId,
@@ -331,7 +331,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const dbCompatibleMobileNumber = mobileNumber.slice(-10);
         const { data: dbUser, error: fetchError } = await supabase
           .from('users')
-          .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not, otp, otp_expires_at, app_metadata, user_metadata')
+          .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not, otp, otp_expires_at')
           .eq('mobile_number', dbCompatibleMobileNumber)
           .single();
 
@@ -365,7 +365,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', dbUser.id)
-          .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not, app_metadata, user_metadata')
+          .select('id, mobile_number, is_verified, full_name, default_street_address_line_1, default_street_address_line_2, default_city, default_state_province_region, default_postal_code, default_country, created_at, updated_at, admin_or_not')
           .single();
         
         if (updateError || !updatedUser) {
@@ -391,8 +391,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           default_state_province_region: updatedUser.default_state_province_region,
           default_postal_code: updatedUser.default_postal_code,
           default_country: updatedUser.default_country,
-          app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-          user_metadata: updatedUser.user_metadata || {},
+          app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
+          user_metadata: {}, // Default value
           created_at: updatedUser.created_at,
           updated_at: updatedUser.updated_at,
           admin_or_not: updatedUser.admin_or_not || false,
@@ -407,8 +407,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           phone: updatedUser.mobile_number, 
           created_at: updatedUser.created_at || new Date().toISOString(),
           updated_at: updatedUser.updated_at || new Date().toISOString(),
-          app_metadata: updatedUser.app_metadata || { provider: 'phone', providers: ['phone'] },
-          user_metadata: { ...updatedUser.user_metadata, ...{
+          app_metadata: { provider: 'phone', providers: ['phone'] }, // Default value
+          user_metadata: { // Default value, merged with profile-like data from users table
             full_name: updatedUser.full_name,
             default_street_address_line_1: updatedUser.default_street_address_line_1,
             default_street_address_line_2: updatedUser.default_street_address_line_2,
@@ -416,7 +416,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             default_state_province_region: updatedUser.default_state_province_region,
             default_postal_code: updatedUser.default_postal_code,
             default_country: updatedUser.default_country,
-          }},
+          },
           identities: [{
             id: effectiveUserId, 
             user_id: effectiveUserId,
