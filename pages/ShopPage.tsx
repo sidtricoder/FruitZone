@@ -1,4 +1,4 @@
-// filepath: a:\New folder\FruitZone\pages\ShopPage.tsx
+// filepath: a:\\New folder\\FruitZone\\pages\\ShopPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -25,8 +25,6 @@ export interface Product {
   is_b2b: boolean;
   type?: string | null; // This will be used as the category
 }
-
-// No mock products, we'll fetch from Supabase
 
 interface ProductCardProps {
   product: Product;
@@ -86,20 +84,37 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       onClick={navigateToProductPage}
     >      <div className="overflow-hidden">
         <LazyImage 
-          src={
-            Array.isArray(product.image_url) && product.image_url.length > 0
-              ? product.image_url[0]
-              : typeof product.image_url === 'string'
-                ? product.image_url
-                : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
-          } 
+          src={(() => {
+            const defaultPlaceholder = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
+            const imgUrl = product.image_url;
+
+            if (Array.isArray(imgUrl) && imgUrl.length > 0 && typeof imgUrl[0] === 'string') {
+              return imgUrl[0];
+            }
+
+            if (typeof imgUrl === 'string') {
+              if (imgUrl.startsWith('[') && imgUrl.endsWith(']')) {
+                try {
+                  const parsedUrls = JSON.parse(imgUrl);
+                  if (Array.isArray(parsedUrls) && parsedUrls.length > 0 && typeof parsedUrls[0] === 'string') {
+                    return parsedUrls[0];
+                  }
+                } catch (e) {
+                  console.warn('ShopPage: Failed to parse image_url JSON string, using placeholder:', imgUrl, e);
+                }
+              } else if (imgUrl.trim() !== "") {
+                return imgUrl;
+              }
+            }
+            return defaultPlaceholder;
+          })()} 
           alt={product.name} 
           className="w-full h-64 object-contain bg-white group-hover:scale-105 transition-transform duration-500 ease-in-out" 
           loading="lazy" 
           width={400} 
           height={256}
           onError={(e) => {
-            console.log('Image load error:', product.name);
+            console.log('Image load error in ShopPage for product:', product.name, 'Attempted src:', (e.target as HTMLImageElement).src);
             (e.target as HTMLImageElement).src = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
           }} 
         />
@@ -225,7 +240,7 @@ const ShopPage: React.FC = () => {
       if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
       if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
     };
-  }, [toast]);
+  }, [toast, loading, products]); // Added loading and products to dependency array
 
   const filteredProducts = products
     .filter(product => 
