@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, ArrowLeft, Heart, Share2, Info, Star, ExternalLink } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Share2, Info, Star, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useCart } from '@/contexts/CartContext';
@@ -433,8 +433,7 @@ const ProductPage: React.FC = () => {
                 </li>
               </ul>
             </div>
-            
-            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 pt-6">
+              <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 pt-6">
               <button 
                 onClick={handleAddToCart}
                 disabled={!product.stock_quantity || product.stock_quantity <= 0}
@@ -444,14 +443,20 @@ const ProductPage: React.FC = () => {
                 Add to Cart
               </button>
               
-              <div className="flex space-x-4 w-full sm:w-auto">
-                <button className="flex-1 p-3 border border-border rounded-lg hover:bg-accent transition-colors">
-                  <Heart className="h-5 w-5 mx-auto" />
-                </button>
-                <button className="flex-1 p-3 border border-border rounded-lg hover:bg-accent transition-colors">
-                  <Share2 className="h-5 w-5 mx-auto" />
-                </button>
-              </div>
+              <button 
+                onClick={() => {
+                  const productUrl = window.location.href;
+                  navigator.clipboard.writeText(productUrl);
+                  toast({
+                    title: "Link copied!",
+                    description: "Product link copied to clipboard.",
+                    variant: "success"
+                  });
+                }}
+                className="flex items-center justify-center p-3 border border-border rounded-lg hover:bg-accent transition-colors"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
             </div>
             
             {/* Shipping Information */}
