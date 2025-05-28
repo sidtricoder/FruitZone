@@ -40,11 +40,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     // Initialize VanillaTilt
     if (cardRef.current) {
       VanillaTilt.init(cardRef.current, {
-        max: 8, // Reduced from 15 to make the effect less sensitive
-        speed: 400,
+        max: 2,
+        speed: 40,
         glare: true,
         "max-glare": 0.1, // Also reducing glare slightly for a more subtle effect
-        perspective: 1000,
+        perspective: 100,
       });
     }
     
