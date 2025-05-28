@@ -440,15 +440,14 @@ const UserProfilePage: React.FC = () => {
                       <CardHeader>
                         <CardTitle className="text-lg">Order ID: {order.id}</CardTitle>
                         <CardDescription>Date: {new Date(order.created_at).toLocaleDateString()} | Status: <span className={`font-semibold ${order.status === 'Completed' ? 'text-green-600' : order.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{order.status}</span></CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="font-semibold text-md">Total: ${order.total_amount.toFixed(2)}</p>
+                      </CardHeader>                      <CardContent>
+                        <p className="font-semibold text-md">Total: ₹{order.total_amount.toLocaleString('en-IN')}</p>
                         <h4 className="font-medium mt-3 mb-2 text-gray-700">Items:</h4>
                         <ul className="list-disc list-inside ml-4 space-y-1 text-sm text-gray-600">
                           {order.order_items.map((item: any) => (
                             <li key={item.id} className="flex items-center justify-between">
                               <div>
-                                <span className="font-medium">{item.products.name}</span> (x{item.quantity}) - ${item.price.toFixed(2)} each
+                                <span className="font-medium">{item.products.name}</span> (x{item.quantity}) - ₹{item.price.toLocaleString('en-IN')} each
                               </div>
                               {item.products.image_url && 
                                 <img src={item.products.image_url} alt={item.products.name} className="w-12 h-12 object-cover rounded-md ml-2"/>}
