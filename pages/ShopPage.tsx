@@ -75,15 +75,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       className="bg-card rounded-lg shadow-lg overflow-hidden group product-card-container"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >    <div className="overflow-hidden">
+      transition={{ duration: 0.5 }}    >
+      <div className="overflow-hidden">
         <LazyImage 
           src={product.image_url || '/static/images/product-placeholder.png'} 
           alt={product.name} 
-          className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" 
+          className="w-full h-64 object-contain bg-white group-hover:scale-105 transition-transform duration-500 ease-in-out" 
           loading="lazy" 
           width={400} 
-          height={224} 
+          height={256} 
         />
       </div>
       <div className="p-6">
