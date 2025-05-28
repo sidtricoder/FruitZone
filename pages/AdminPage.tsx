@@ -22,6 +22,7 @@ interface Product {
   b2b_price: number;
   b2b_minimum_quantity: number;
   is_b2b: boolean;
+  type: string;
 }
 
 interface Order {
@@ -61,12 +62,11 @@ const AdminPage: React.FC = () => {
     products: false,
     orders: false,
     adminCheck: true
-  });
-  const [productSearchTerm, setProductSearchTerm] = useState('');
+  });  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [productTypeFilter, setProductTypeFilter] = useState('all');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
-  const [isAdmin, setIsAdmin] = useState(false);
-  // New product state
+  const [isAdmin, setIsAdmin] = useState(false);  // New product state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
@@ -77,6 +77,7 @@ const AdminPage: React.FC = () => {
     b2b_price: 0,
     b2b_minimum_quantity: 25,
     is_b2b: false,
+    type: 'Fruits', // Default type
   });
   
   // Wrap fetch functions in useCallback to stabilize them for effect dependencies
@@ -297,11 +298,16 @@ const AdminPage: React.FC = () => {
   }, [isAuthenticated, user, navigate, toast, fetchProducts, fetchOrders]);
   // These duplicate function declarations were removed to prevent issues
 
-  // Handle product search
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase())
-  );
+  // Handle product search and filtering
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = 
+      product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+      product.description?.toLowerCase().includes(productSearchTerm.toLowerCase());
+      
+    const matchesTypeFilter = productTypeFilter === 'all' || product.type === productTypeFilter;
+    
+    return matchesSearch && matchesTypeFilter;
+  });
 
   // Handle order filtering
   const filteredOrders = orders.filter(order => {
@@ -316,13 +322,12 @@ const AdminPage: React.FC = () => {
   });
 
   // Handle product save
-  const handleSaveProduct = async () => {
-    try {
+  const handleSaveProduct = async () => {    try {
       // Form validation
-      if (!newProduct.name || !newProduct.price) {
+      if (!newProduct.name || !newProduct.price || !newProduct.type) {
         toast({
           title: "Missing required fields",
-          description: "Please fill in all required fields.",
+          description: "Please fill in all required fields (Name, Type, and Price).",
           variant: "destructive"
         });
         return;
@@ -350,7 +355,8 @@ const AdminPage: React.FC = () => {
             updated_at: new Date(),
             b2b_price: newProduct.b2b_price,
             b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
-            is_b2b: newProduct.is_b2b
+            is_b2b: newProduct.is_b2b,
+            type: newProduct.type
           })
           .eq('id', editingProduct.id)
           .select();
@@ -360,8 +366,7 @@ const AdminPage: React.FC = () => {
         toast({
           title: "Product updated",
           description: `${newProduct.name} has been successfully updated.`
-        });      } else {
-        // Create new product
+        });      } else {        // Create new product
         const { error } = await supabase
           .from('products')
           .insert([{
@@ -372,7 +377,8 @@ const AdminPage: React.FC = () => {
             image_url: newProduct.image_url,
             b2b_price: newProduct.b2b_price,
             b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
-            is_b2b: newProduct.is_b2b
+            is_b2b: newProduct.is_b2b,
+            type: newProduct.type
           }])
           .select();
 
@@ -382,9 +388,7 @@ const AdminPage: React.FC = () => {
           title: "Product created",
           description: `${newProduct.name} has been successfully created.`
         });
-      }
-
-      // Reset form and refresh products
+      }      // Reset form and refresh products
       setEditingProduct(null);
       setNewProduct({
         name: '',
@@ -395,6 +399,7 @@ const AdminPage: React.FC = () => {
         b2b_price: 0,
         b2b_minimum_quantity: 25,
         is_b2b: false,
+        type: 'Fruits', // Reset to default type
       });
       fetchProducts();
     } catch (error) {
@@ -406,7 +411,6 @@ const AdminPage: React.FC = () => {
       });
     }
   };
-
   // Handle product edit
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
@@ -419,6 +423,7 @@ const AdminPage: React.FC = () => {
       b2b_price: product.b2b_price || 0,
       b2b_minimum_quantity: product.b2b_minimum_quantity || 25,
       is_b2b: product.is_b2b || false,
+      type: product.type || 'Fruits', // Include type with default fallback
     });
   };
 
@@ -515,8 +520,7 @@ const AdminPage: React.FC = () => {
               <h2 className="text-xl font-semibold mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Product Form Left Column */}
-                <div className="space-y-4">
-                  <div>
+                <div className="space-y-4">                  <div>
                     <label className="block text-sm font-medium mb-1">Name *</label>
                     <input 
                       type="text" 
@@ -526,6 +530,20 @@ const AdminPage: React.FC = () => {
                       placeholder="Product name"
                       required
                     />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Type *</label>
+                    <select
+                      value={newProduct.type}
+                      onChange={(e) => setNewProduct({...newProduct, type: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
+                      required
+                    >
+                      <option value="Fruits">Fruits</option>
+                      <option value="Vegetables">Vegetables</option>
+                      <option value="Leaves">Leaves</option>
+                    </select>
                   </div>
                   
                   <div>
@@ -639,8 +657,7 @@ const AdminPage: React.FC = () => {
                 </div>
               </div>
               
-              <div className="mt-6 flex justify-end gap-3">
-                <button 
+              <div className="mt-6 flex justify-end gap-3">                <button 
                   onClick={() => {
                     setEditingProduct(null);
                     setNewProduct({
@@ -652,6 +669,7 @@ const AdminPage: React.FC = () => {
                       b2b_price: 0,
                       b2b_minimum_quantity: 25,
                       is_b2b: false,
+                      type: 'Fruits', // Reset to default type
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
@@ -671,8 +689,7 @@ const AdminPage: React.FC = () => {
             {/* Product List */}
             <div className="bg-card rounded-lg shadow overflow-hidden">
               <div className="p-4 border-b flex flex-col md:flex-row items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Products</h2>
-                <div className="flex items-center gap-2 w-full md:w-auto">
+                <h2 className="text-xl font-semibold">Products</h2>                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
                   <div className="relative flex-grow md:max-w-xs">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <input 
@@ -683,6 +700,17 @@ const AdminPage: React.FC = () => {
                       onChange={(e) => setProductSearchTerm(e.target.value)}
                     />
                   </div>
+                  <select
+                    value={productTypeFilter}
+                    onChange={(e) => setProductTypeFilter(e.target.value)}
+                    className="py-2 px-3 border rounded-md"
+                    title="Filter by type"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="Fruits">Fruits</option>
+                    <option value="Vegetables">Vegetables</option>
+                    <option value="Leaves">Leaves</option>
+                  </select>
                   <button 
                     onClick={fetchProducts} 
                     className="p-2 border rounded-md hover:bg-gray-100"
@@ -694,21 +722,20 @@ const AdminPage: React.FC = () => {
               </div>
               
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200">                  <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">B2B Details</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {loading.products ? (
+                  <tbody className="bg-white divide-y divide-gray-200">                    {loading.products ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                           Loading products...
                         </td>
                       </tr>
@@ -730,12 +757,16 @@ const AdminPage: React.FC = () => {
                                 <Package size={24} className="text-gray-400" />
                               </div>
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          </td>                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
                             <div className="text-sm text-gray-500 truncate max-w-xs">
                               {product.description?.substring(0, 50)}{product.description?.length > 50 ? '...' : ''}
                             </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                              {product.type || 'Unspecified'}
+                            </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">₹{product.price.toLocaleString('en-IN')}</div>
@@ -779,9 +810,8 @@ const AdminPage: React.FC = () => {
                           </td>
                         </tr>
                       ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                    ) : (                      <tr>
+                        <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                           No products found.
                         </td>
                       </tr>
