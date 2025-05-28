@@ -1,5 +1,6 @@
 // filepath: a:\New folder\FruitZone\pages\ShopPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Search, Filter } from 'lucide-react';
 import VanillaTilt from 'vanilla-tilt';
@@ -16,7 +17,7 @@ export interface Product {
   description: string | null;
   price: number;
   stock_quantity: number | null;
-  image_url: string | null;
+  image_url: string | string[] | null; // Now can be a string or array of strings
   created_at: string | null;
   updated_at: string | null;
   b2b_price: number | null;
@@ -33,6 +34,7 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -56,7 +58,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     };
   }, []);
 
-  const handleAddToCartClick = () => {
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigating to product page
     addToCart(product);
     
     // GSAP animation for button
@@ -69,16 +72,27 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
+  const navigateToProductPage = () => {
+    navigate(`/products/${product.id}`);
+  };
+
   return (
     <motion.div 
       ref={cardRef}
-      className="bg-card rounded-lg shadow-lg overflow-hidden group product-card-container"
+      className="bg-card rounded-lg shadow-lg overflow-hidden group product-card-container cursor-pointer"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}    >
-      <div className="overflow-hidden">
+      transition={{ duration: 0.5 }}
+      onClick={navigateToProductPage}
+    >      <div className="overflow-hidden">
         <LazyImage 
-          src={product.image_url || '/static/images/product-placeholder.png'} 
+          src={
+            Array.isArray(product.image_url) && product.image_url.length > 0
+              ? product.image_url[0]
+              : typeof product.image_url === 'string'
+                ? product.image_url
+                : '/static/images/Dry-Daddy.png'
+          } 
           alt={product.name} 
           className="w-full h-64 object-contain bg-white group-hover:scale-105 transition-transform duration-500 ease-in-out" 
           loading="lazy" 

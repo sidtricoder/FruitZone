@@ -16,7 +16,7 @@ interface Product {
   description: string;
   price: number;
   stock_quantity: number;
-  image_url: string;
+  image_url: string | string[]; // Now can be a string or array of strings
   created_at: string;
   updated_at: string;
   b2b_price: number;
@@ -67,18 +67,20 @@ const AdminPage: React.FC = () => {
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [isAdmin, setIsAdmin] = useState(false);  // New product state
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);  const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
     description: '',
     price: 0,
     stock_quantity: 0,
-    image_url: '',
+    image_url: [] as string[], // Initialize as empty array for multiple images
     b2b_price: 0,
     b2b_minimum_quantity: 25,
     is_b2b: false,
     type: 'Fruits', // Default type
   });
+  
+  // State for handling image URL input
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
   
   // Wrap fetch functions in useCallback to stabilize them for effect dependencies
   const fetchProducts = useCallback(async () => {
@@ -331,18 +333,36 @@ const AdminPage: React.FC = () => {
           variant: "destructive"
         });
         return;
-      }
-
-      // Validate image URL
-      if (newProduct.image_url && 
-          !(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(newProduct.image_url))) {
+      }      // Validate image URLs
+      if (Array.isArray(newProduct.image_url)) {
+        // Check if at least one image is required
+        if (newProduct.image_url.length === 0) {
+          toast({
+            title: "Image required",
+            description: "Please add at least one product image.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        // Check each URL for valid image extension
+        const invalidUrls = newProduct.image_url.filter(url => !(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(url)));
+        if (invalidUrls.length > 0) {
+          toast({
+            title: "Invalid image URL",
+            description: "All image URLs must end with a valid image extension (.jpeg, .png, .webp, etc).",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else if (typeof newProduct.image_url === 'string' && !(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(newProduct.image_url))) {
         toast({
           title: "Invalid image URL",
           description: "Image URL must end with a valid image extension (.jpeg, .png, .webp, etc).",
           variant: "destructive"
         });
         return;
-      }      if (editingProduct) {
+      }if (editingProduct) {
         // Update existing product
         const { error } = await supabase
           .from('products')
@@ -395,12 +415,13 @@ const AdminPage: React.FC = () => {
         description: '',
         price: 0,
         stock_quantity: 0,
-        image_url: '',
+        image_url: [] as string[],
         b2b_price: 0,
         b2b_minimum_quantity: 25,
         is_b2b: false,
         type: 'Fruits', // Reset to default type
       });
+      setCurrentImageUrl('');
       fetchProducts();
     } catch (error) {
       console.error('Error saving product:', error);
@@ -572,32 +593,81 @@ const AdminPage: React.FC = () => {
                       required
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Image URL *</label>
-                    <div className="flex gap-2">
+                    <div>
+                    <label className="block text-sm font-medium mb-1">Product Images *</label>
+                    <div className="flex gap-2 mb-2">
                       <input 
                         type="text" 
-                        value={newProduct.image_url} 
-                        onChange={(e) => setNewProduct({...newProduct, image_url: e.target.value})}
+                        value={currentImageUrl}
+                        onChange={(e) => setCurrentImageUrl(e.target.value)}
                         className="flex-grow p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
                         placeholder="https://example.com/image.png"
-                        required
                       />
                       <button 
                         className="bg-primary text-white p-2 rounded hover:bg-primary/80"
-                        title="Preview image"
+                        title="Add image"
+                        type="button"
                         onClick={() => {
-                          if (newProduct.image_url) {
-                            window.open(newProduct.image_url, '_blank');
+                          if (currentImageUrl && /\.(jpeg|jpg|png|gif|webp|svg)$/i.test(currentImageUrl)) {
+                            const updatedUrls = Array.isArray(newProduct.image_url) 
+                              ? [...newProduct.image_url, currentImageUrl]
+                              : [currentImageUrl];
+                            
+                            setNewProduct({...newProduct, image_url: updatedUrls});
+                            setCurrentImageUrl('');
+                          } else {
+                            toast({
+                              title: "Invalid image URL",
+                              description: "Image URL must end with a valid image extension (.jpeg, .png, .webp, etc).",
+                              variant: "destructive"
+                            });
                           }
                         }}
                       >
                         <ImagePlus size={20} />
                       </button>
                     </div>
+                    
+                    {/* Image Gallery */}
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {Array.isArray(newProduct.image_url) && newProduct.image_url.map((url, index) => (
+                        <div key={index} className="relative group border rounded p-1">
+                          <img 
+                            src={url} 
+                            alt={`Product image ${index + 1}`} 
+                            className="h-16 w-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/static/images/product-placeholder.png';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedUrls = Array.isArray(newProduct.image_url) 
+                                  ? newProduct.image_url.filter((_, i) => i !== index)
+                                  : [];
+                                setNewProduct({...newProduct, image_url: updatedUrls});
+                              }}
+                              className="p-1 bg-red-500 rounded-full"
+                            >
+                              <Trash2 size={16} className="text-white" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Empty state if no images */}
+                      {(!Array.isArray(newProduct.image_url) || newProduct.image_url.length === 0) && (
+                        <div className="border rounded p-4 col-span-2 flex flex-col items-center justify-center text-muted-foreground">
+                          <ImagePlus size={24} className="mb-1" />
+                          <p className="text-xs">No images added yet</p>
+                        </div>
+                      )}
+                    </div>
+                    
                     <p className="text-xs text-muted-foreground mt-1">
-                      Must end with an image extension (.jpg, .png, .webp, etc)
+                      Add multiple images. First image will be the main product image.
                     </p>
                   </div>
                 </div>
@@ -665,12 +735,13 @@ const AdminPage: React.FC = () => {
                       description: '',
                       price: 0,
                       stock_quantity: 0,
-                      image_url: '',
+                      image_url: [] as string[],
                       b2b_price: 0,
                       b2b_minimum_quantity: 25,
                       is_b2b: false,
                       type: 'Fruits', // Reset to default type
                     });
+                    setCurrentImageUrl('');
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
                 >
@@ -741,23 +812,35 @@ const AdminPage: React.FC = () => {
                       </tr>
                     ) : filteredProducts.length > 0 ? (
                       filteredProducts.map((product) => (
-                        <tr key={product.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr key={product.id} className="hover:bg-gray-50">                          <td className="px-6 py-4 whitespace-nowrap">
                             {product.image_url ? (
-                              <img 
-                                src={product.image_url} 
-                                alt={product.name} 
-                                className="h-12 w-12 object-cover rounded"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/static/images/product-placeholder.png';
-                                }}
-                              />
+                              <div className="relative group">
+                                <img 
+                                  src={
+                                    Array.isArray(product.image_url) && product.image_url.length > 0
+                                      ? product.image_url[0]
+                                      : typeof product.image_url === 'string'
+                                        ? product.image_url
+                                        : '/static/images/product-placeholder.png'
+                                  }
+                                  alt={product.name} 
+                                  className="h-12 w-12 object-contain bg-white rounded"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/static/images/product-placeholder.png';
+                                  }}
+                                />
+                                {Array.isArray(product.image_url) && product.image_url.length > 1 && (
+                                  <span className="absolute -top-1 -right-1 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                    {product.image_url.length}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
                                 <Package size={24} className="text-gray-400" />
                               </div>
                             )}
-                          </td>                          <td className="px-6 py-4 whitespace-nowrap">
+                          </td><td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{product.name}</div>
                             <div className="text-sm text-gray-500 truncate max-w-xs">
                               {product.description?.substring(0, 50)}{product.description?.length > 50 ? '...' : ''}

@@ -14,6 +14,7 @@ const B2BPage = lazy(() => import("./pages/B2BPage")); // Import B2BPage
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage")); // Import CheckoutPage
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // Import UserProfilePage
 const AdminPage = lazy(() => import("./pages/AdminPage")); // Import AdminPage
+const ProductPage = lazy(() => import("./pages/ProductPage")); // Import ProductPage
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -37,12 +38,19 @@ function AppContent() {
       <main className="flex-grow">
         <Suspense fallback={<div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-green-500"></div></div>}>          <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route 
+            <Route path="/auth" element={<AuthPage />} />            <Route 
               path="/shop" 
               element={
                 <ProtectedRoute>
                   <ShopPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/products/:productId" 
+              element={
+                <ProtectedRoute>
+                  <ProductPage />
                 </ProtectedRoute>
               } 
             />
