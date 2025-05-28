@@ -47,9 +47,21 @@ const CartModal: React.FC = () => {
           <p className="p-8 text-center text-muted-foreground">Your cart is empty.</p>
         ) : (
           <div className="p-6 overflow-y-auto flex-grow">
-            {cartItems.map(item => (
-              <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">                <div className="flex items-center">
-                  <LazyImage src={item.image_url || '/static/images/product-placeholder.png'} alt={item.name} className="w-16 h-16 object-cover rounded-md mr-4" loading="lazy" width={64} height={64} />
+            {cartItems.map(item => (              <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">                <div className="flex items-center">
+                  <LazyImage 
+                    src={
+                      Array.isArray(item.image_url) && item.image_url.length > 0
+                        ? item.image_url[0]
+                        : typeof item.image_url === 'string'
+                          ? item.image_url
+                          : '/static/images/product-placeholder.png'
+                    } 
+                    alt={item.name} 
+                    className="w-16 h-16 object-contain bg-white rounded-md mr-4" 
+                    loading="lazy" 
+                    width={64} 
+                    height={64} 
+                  />
                   <div>
                     <h3 className="font-semibold text-foreground">{item.name}</h3>
                     <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p>

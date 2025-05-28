@@ -11,7 +11,7 @@ interface Product {
   description: string | null;
   price: number;
   stock_quantity: number | null;
-  image_url: string | null;
+  image_url: string | string[] | null;
   created_at: string | null;
   updated_at: string | null;
   b2b_price: number | null;
