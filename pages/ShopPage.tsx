@@ -113,7 +113,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           loading="lazy" 
           width={400} 
           height={256}
-          onError={(e) => {
+          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { // Typed 'e' here
             console.log('Image load error in ShopPage for product:', product.name, 'Attempted src:', (e.target as HTMLImageElement).src);
             (e.target as HTMLImageElement).src = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
           }} 
@@ -146,50 +146,32 @@ const ShopPage: React.FC = () => {
   const filtersRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Fetch products from Supabase
+  // Effect for fetching products and static GSAP animations (title, filters)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        
-        // Fetch products from Supabase
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .order('name', { ascending: true });
 
-        if (error) {
-          throw error;
-        }
-
+        if (error) throw error;
         if (data) {
           setProducts(data);
-          
-          // Extract unique product types (categories)
           const productTypes = new Set<string>();
-          data.forEach(product => {
-            if (product.type) {
-              productTypes.add(product.type);
-            }
-          });
-          
+          data.forEach(p => { if (p.type) productTypes.add(p.type); });
           setCategories(['All', ...Array.from(productTypes)]);
         }
       } catch (error) {
         console.error('Error fetching products:', error);
-        toast({
-          title: "Error loading products",
-          description: "There was an error loading products. Please try again later.",
-          variant: "destructive"
-        });
+        toast({ title: "Error loading products", description: "Could not load products.", variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
-
     fetchProducts();
 
-    // GSAP Animations for Shop Page Title and Filters
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!prefersReducedMotion) {
       if (shopTitleRef.current) {
@@ -205,13 +187,27 @@ const ShopPage: React.FC = () => {
         );
       }
     }
+    return () => {
+      if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
+      if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
+    };
+  }, [toast]); // Removed products and loading from here, as this effect is for initial load and static animations
 
-    // Setup GSAP animations for product cards
+  // Effect for GSAP animations on product cards, dependent on products and loading state
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion || loading || products.length === 0) {
+      // If motion is reduced, still loading, or no products, don't run animations
+      // or clean up existing ones if necessary (though GSAP might handle this if elements are removed)
+      const productCards = document.querySelectorAll('.product-card-container');
+      if (productCards.length > 0) gsap.killTweensOf(productCards); // Clean up if cards were previously animated
+      return;
+    }
+
     const setUpProductCardAnimations = () => {
-      if (prefersReducedMotion) return;
-      
       const productCards = document.querySelectorAll('.product-card-container');
       if (productCards.length > 0) {
+        gsap.killTweensOf(productCards); // Ensure any previous animations are stopped
         gsap.fromTo(productCards, 
           { opacity: 0, y: 50 }, 
           {
@@ -229,18 +225,15 @@ const ShopPage: React.FC = () => {
         );
       }
     };
-
-    // Call after products are fetched and rendered
-    if (!loading && products.length > 0) {
-      setTimeout(setUpProductCardAnimations, 100);
-    }
-
+    // Delay slightly to ensure DOM is ready for animations
+    const timerId = setTimeout(setUpProductCardAnimations, 100);
     return () => {
-      // Cleanup GSAP animations
-      if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
-      if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
+      clearTimeout(timerId);
+      // It's good practice to kill tweens associated with elements that might be re-rendered or removed
+      const productCards = document.querySelectorAll('.product-card-container');
+      if (productCards.length > 0) gsap.killTweensOf(productCards);
     };
-  }, [toast, loading, products]); // Added loading and products to dependency array
+  }, [loading, products]); // This effect now correctly depends on loading and products
 
   const filteredProducts = products
     .filter(product => 
