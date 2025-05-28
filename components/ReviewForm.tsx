@@ -4,7 +4,7 @@ import { Star, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { useToast } from './ui/use-toast';
-import { supabase, bypassRLS } from '@/lib/supabaseClient';
+import { bypassRLS } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ReviewFormProps {
