@@ -89,7 +89,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               ? product.image_url[0]
               : typeof product.image_url === 'string'
                 ? product.image_url
-                : '/static/images/product-placeholder.png'
+                : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
           }
           alt={product.name} 
           className="w-full h-64 object-contain bg-white group-hover:scale-105 transition-transform duration-500 ease-in-out" 

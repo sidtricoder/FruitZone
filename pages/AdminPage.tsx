@@ -815,13 +815,12 @@ const AdminPage: React.FC = () => {
                         <tr key={product.id} className="hover:bg-gray-50">                          <td className="px-6 py-4 whitespace-nowrap">
                             {product.image_url ? (
                               <div className="relative group">
-                                <img 
-                                  src={
+                                <img                                  src={
                                     Array.isArray(product.image_url) && product.image_url.length > 0
                                       ? product.image_url[0]
                                       : typeof product.image_url === 'string'
                                         ? product.image_url
-                                        : '/static/images/product-placeholder.png'
+                                        : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
                                   }
                                   alt={product.name} 
                                   className="h-12 w-12 object-contain bg-white rounded"

@@ -8,6 +8,7 @@ import AuthPage from './pages/AuthPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartModal from './components/CartModal'; // Import CartModal
+import ImageDebug from './components/ImageDebug'; // Import ImageDebug component
 
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const B2BPage = lazy(() => import("./pages/B2BPage")); // Import B2BPage
@@ -84,6 +85,11 @@ function AppContent() {
                   <AdminPage />
                 </ProtectedRoute>
               } 
+            />
+            {/* Debug route */}
+            <Route 
+              path="/debug" 
+              element={<ImageDebug />} 
             />
           </Routes>
         </Suspense>
