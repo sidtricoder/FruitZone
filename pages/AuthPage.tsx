@@ -113,7 +113,7 @@ export default function AuthPage() {
                 <Input
                   id="mobile"
                   type="tel"
-                  placeholder="Enter mobile (+91XXXXXXXXXX or XXXXXXXXXX)"
+                  placeholder="Enter mobile number"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
                   // Loosened pattern to allow more flexibility, formatting is handled in the function

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageSquare, Search, Filter } from 'lucide-react';
-import VanillaTilt from 'vanilla-tilt';
 import { gsap } from 'gsap';
 import LazyImage from '@/components/ui/LazyImage';
 import { supabase } from '@/lib/supabaseClient';
@@ -35,26 +34,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    // Initialize VanillaTilt
-    if (cardRef.current) {
-      VanillaTilt.init(cardRef.current, {
-        max: 15,
-        speed: 400,
-        glare: true,
-        "max-glare": 0.2,
-        perspective: 1000,
-      });
-    }
-    
-    // Cleanup VanillaTilt on component unmount
-    return () => {
-      if (cardRef.current && (cardRef.current as any).vanillaTilt) {
-        (cardRef.current as any).vanillaTilt.destroy();
-      }
-    };
-  }, []);
-
   const handleEnquiryClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigating to product page
     // Open a simple contact form or email dialog for B2B inquiries
@@ -84,18 +63,37 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       onClick={navigateToProductPage}
     >      <div className="overflow-hidden">
         <LazyImage 
-          src={
-            Array.isArray(product.image_url) && product.image_url.length > 0
-              ? product.image_url[0]
-              : typeof product.image_url === 'string'
-                ? product.image_url
-                : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
-          }
+          src={(() => {
+            const defaultPlaceholder = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
+            const imgUrl = product.image_url;
+            if (Array.isArray(imgUrl) && imgUrl.length > 0 && typeof imgUrl[0] === 'string') return imgUrl[0];
+            if (typeof imgUrl === 'string') {
+              if (imgUrl.startsWith('[') && imgUrl.endsWith(']')) {
+                try {
+                  const parsed = JSON.parse(imgUrl);
+                  if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+                    return parsed[0];
+                  }
+                } catch (e) {
+                  console.error("Failed to parse image_url JSON string:", e);
+                  return defaultPlaceholder; // Fallback on parsing error
+                }
+              } else if (imgUrl.trim() !== "") {
+                return imgUrl; // It's a single, non-empty URL string
+              }
+            }
+            return defaultPlaceholder; // Fallback if no valid image found
+          })()}
           alt={product.name} 
           className="w-full h-64 object-contain bg-white group-hover:scale-105 transition-transform duration-500 ease-in-out" 
           loading="lazy" 
           width={400} 
-          height={256} 
+          height={256}
+          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`; // Fallback to placeholder
+            target.onerror = null; // Prevent infinite loop if placeholder also fails
+          }}
         />
       </div>
       <div className="p-6">

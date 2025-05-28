@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Package, ShoppingBag, Edit, Trash2, Search, 
-  CheckCircle, XCircle, Clock, Filter, Save, ImagePlus, RefreshCw
+  CheckCircle, XCircle, Filter, Save, ImagePlus, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,14 +13,14 @@ import { useAuth } from '@/hooks/useAuth';
 interface Product {
   id: number;
   name: string;
-  description: string;
+  description: string | null; // Assuming description can also be null based on typical DB schemas
   price: number;
   stock_quantity: number;
-  image_url: string | string[]; // Now can be a string or array of strings
+  image_url: string | string[]; 
   created_at: string;
   updated_at: string;
-  b2b_price: number;
-  b2b_minimum_quantity: number;
+  b2b_price: number | null; // Corrected: Allow null
+  b2b_minimum_quantity: number | null; // Corrected: Allow null
   is_b2b: boolean;
   type: string;
 }
@@ -62,27 +62,29 @@ const AdminPage: React.FC = () => {
     products: false,
     orders: false,
     adminCheck: true
-  });  const [productSearchTerm, setProductSearchTerm] = useState('');
+  });
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const [productTypeFilter, setProductTypeFilter] = useState('all');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
-  const [isAdmin, setIsAdmin] = useState(false);  // New product state
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);  const [newProduct, setNewProduct] = useState<Partial<Product>>({
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  const initialNewProductState: Partial<Product> = {
     name: '',
     description: '',
     price: 0,
     stock_quantity: 0,
-    image_url: [] as string[], // Initialize as empty array for multiple images
-    b2b_price: 0,
-    b2b_minimum_quantity: 25,
+    image_url: [] as string[],
+    b2b_price: null, // Corrected: Initialize with null
+    b2b_minimum_quantity: 25, // Default or null
     is_b2b: false,
-    type: 'Fruits', // Default type
-  });
+    type: 'Fruits',
+  };
+  const [newProduct, setNewProduct] = useState<Partial<Product>>(initialNewProductState);
   
-  // State for handling image URL input
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   
-  // Wrap fetch functions in useCallback to stabilize them for effect dependencies
   const fetchProducts = useCallback(async () => {
     setLoading(prev => ({...prev, products: true}));
     try {
@@ -90,63 +92,40 @@ const AdminPage: React.FC = () => {
         .from('products')
         .select('*')
         .order('updated_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
-      toast({
-        title: "Error fetching products",
-        description: "There was an error loading products. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error fetching products", description: "There was an error loading products.", variant: "destructive" });
     } finally {
       setLoading(prev => ({...prev, products: false}));
     }
   }, [toast]);
 
-  // Wrap fetchOrders in useCallback
   const fetchOrders = useCallback(async () => {
     setLoading(prev => ({...prev, orders: true}));
     try {
-      // First get all orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-
       if (ordersError) throw ordersError;
-        // For each order, get order items and user details
+
       const completeOrders = await Promise.all((ordersData || []).map(async (order) => {
         try {
-          // Get order items
           const { data: itemsData, error: itemsError } = await supabase
             .from('order_items')
             .select('*, product:product_id(name, image_url)')
             .eq('order_id', order.id);
-            
-          if (itemsError) {
-            console.error('Error fetching order items:', itemsError);
-            return {
-              ...order,
-              items: [],
-              user_details: undefined
-            };
-          }          // Get user details - only select fields that exist in the table
+          if (itemsError) { console.error('Error fetching order items:', itemsError); return { ...order, items: [], user_details: undefined }; }
+          
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('full_name, mobile_number')
             .eq('id', order.user_id)
             .single();
-          
-          if (userError) {
-            console.error('Error fetching user details:', userError);
-            // Continue processing even if we can't get user details
-          }
-          // Transform items to include product name and image
+          if (userError) { console.error('Error fetching user details:', userError); }
+
           const items = (itemsData || []).map(item => ({
             id: item.id,
             order_id: item.order_id,
@@ -154,285 +133,176 @@ const AdminPage: React.FC = () => {
             quantity: item.quantity,
             price: item.price,
             product_name: item.product ? item.product.name : 'Unknown Product',
-            product_image: item.product ? item.product.image_url : undefined,
+            product_image: item.product ? (Array.isArray(item.product.image_url) ? item.product.image_url[0] : item.product.image_url) : undefined,
           }));
-          return {
-            ...order,
-            items,
-            user_details: userData || undefined
-          };
+          return { ...order, items, user_details: userData || undefined };
         } catch (orderError) {
           console.error(`Error processing order ${order.id}:`, orderError);
-          // Return the order with empty items rather than failing the entire process
-          return {
-            ...order,
-            items: [],
-            user_details: undefined
-          };
+          return { ...order, items: [], user_details: undefined };
         }
       }));
-      
       setOrders(completeOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast({
-        title: "Error fetching orders",
-        description: "There was an error loading orders. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error fetching orders", description: "There was an error loading orders.", variant: "destructive" });
     } finally {
       setLoading(prev => ({...prev, orders: false}));
     }
   }, [toast]);
-    // Check if user is admin - with added debugging
+
   useEffect(() => {
-    console.log("Admin check effect running");
     let isMounted = true;
     setLoading(prev => ({...prev, adminCheck: true}));
-    
-    // Set timeout to ensure we don't get stuck in loading state
     const timeoutId = setTimeout(() => {
       if (isMounted) {
-        console.log("Admin check timed out, resetting loading state");
         setLoading(prev => ({...prev, adminCheck: false}));
-        // Don't navigate on timeout, just update loading state
-        toast({
-          title: "Admin check taking longer than expected",
-          description: "Please wait or try refreshing the page.",
-          variant: "default"
-        });
+        toast({ title: "Admin check taking longer than expected", description: "Please wait or try refreshing.", variant: "default" });
       }
-    }, 8000); // Increased timeout for reliable testing
+    }, 8000);
 
     const checkAdminStatus = async () => {
       if (!isAuthenticated || !user) {
-        if (isMounted) {
-          clearTimeout(timeoutId);
-          setLoading(prev => ({...prev, adminCheck: false}));
-          setIsAdmin(false);
-          navigate('/auth');
-        }
+        if (isMounted) { clearTimeout(timeoutId); setLoading(prev => ({...prev, adminCheck: false})); setIsAdmin(false); navigate('/auth'); }
         return;
       }
-
-      console.log("Checking user admin status:", user);
-
-      // First check: Use the admin_or_not from the user object if available
       if (user.admin_or_not === true) {
-        if (isMounted) {
-          console.log("User is admin from auth context");
-          clearTimeout(timeoutId);
-          setIsAdmin(true);
-          setLoading(prev => ({...prev, adminCheck: false}));
-          fetchProducts();
-          fetchOrders();
-        }
+        if (isMounted) { clearTimeout(timeoutId); setIsAdmin(true); setLoading(prev => ({...prev, adminCheck: false})); fetchProducts(); fetchOrders(); }
         return;
       }
-      
       try {
-        // Second check: Verify with the database
-        console.log("Verifying admin status from database for user ID:", user.id);
-        const { data, error } = await supabase
-          .from('users')
-          .select('admin_or_not')
-          .eq('id', user.id)
-          .single();
-
+        const { data, error } = await supabase.from('users').select('admin_or_not').eq('id', user.id).single();
         if (!isMounted) return;
-        
         clearTimeout(timeoutId);
-        
         if (error) {
-          console.error("Database error checking admin status:", error);
-          setIsAdmin(false);
-          setLoading(prev => ({...prev, adminCheck: false}));
-          navigate('/');
-          toast({
-            title: "Database Error",
-            description: "Could not verify admin status. Please try again.",
-            variant: "destructive"
-          });
+          setIsAdmin(false); setLoading(prev => ({...prev, adminCheck: false})); navigate('/');
+          toast({ title: "Database Error", description: "Could not verify admin status.", variant: "destructive" });
           return;
         }
-
-        console.log("Admin check database result:", data);
-
         if (!data || data.admin_or_not !== true) {
-          console.log("User is not an admin:", user.id);
-          setIsAdmin(false);
-          setLoading(prev => ({...prev, adminCheck: false}));
-          navigate('/');
-          toast({
-            title: "Access Denied",
-            description: "You don't have permission to access the admin area.",
-            variant: "destructive"
-          });
+          setIsAdmin(false); setLoading(prev => ({...prev, adminCheck: false})); navigate('/');
+          toast({ title: "Access Denied", description: "You don't have permission.", variant: "destructive" });
         } else {
-          console.log("User confirmed as admin from database");
-          setIsAdmin(true);
-          setLoading(prev => ({...prev, adminCheck: false}));
-          fetchProducts();
-          fetchOrders();
+          setIsAdmin(true); setLoading(prev => ({...prev, adminCheck: false})); fetchProducts(); fetchOrders();
         }
       } catch (error) {
         if (!isMounted) return;
-        
-        clearTimeout(timeoutId);
-        console.error("Admin check error:", error);
-        setIsAdmin(false);
-        setLoading(prev => ({...prev, adminCheck: false}));
-        navigate('/');
-        toast({
-          title: "Error",
-          description: "An error occurred while checking admin status.",
-          variant: "destructive"
-        });
+        clearTimeout(timeoutId); setIsAdmin(false); setLoading(prev => ({...prev, adminCheck: false})); navigate('/');
+        toast({ title: "Error", description: "Error checking admin status.", variant: "destructive" });
       }
     };
-
     checkAdminStatus();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
+    return () => { isMounted = false; clearTimeout(timeoutId); };
   }, [isAuthenticated, user, navigate, toast, fetchProducts, fetchOrders]);
-  // These duplicate function declarations were removed to prevent issues
 
-  // Handle product search and filtering
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(productSearchTerm.toLowerCase());
-      
-    const matchesTypeFilter = productTypeFilter === 'all' || product.type === productTypeFilter;
-    
-    return matchesSearch && matchesTypeFilter;
-  });
-
-  // Handle order filtering
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.user_details?.full_name?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
-      order.user_details?.mobile_number?.includes(orderSearchTerm) ||
-      order.id.toString().includes(orderSearchTerm);
-    
-    const matchesStatus = orderStatusFilter === 'all' || order.status === orderStatusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
-
-  // Handle product save
-  const handleSaveProduct = async () => {    try {
-      // Form validation
-      if (!newProduct.name || !newProduct.price || !newProduct.type) {
-        toast({
-          title: "Missing required fields",
-          description: "Please fill in all required fields (Name, Type, and Price).",
-          variant: "destructive"
-        });
-        return;
-      }      // Validate image URLs
-      if (Array.isArray(newProduct.image_url)) {
-        // Check if at least one image is required
-        if (newProduct.image_url.length === 0) {
-          toast({
-            title: "Image required",
-            description: "Please add at least one product image.",
-            variant: "destructive"
-          });
-          return;
+  // Helper to get the first image URL for display
+  const getDisplayImageUrl = (imageUrl: string | string[] | null, productType?: string): string => {
+    const type = productType?.toLowerCase() || 'product';
+    const defaultPlaceholder = `/static/images/${type}-placeholder.jpg`;
+    if (Array.isArray(imageUrl) && imageUrl.length > 0 && typeof imageUrl[0] === 'string') {
+      return imageUrl[0];
+    }
+    if (typeof imageUrl === 'string') {
+      if (imageUrl.startsWith('[') && imageUrl.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(imageUrl);
+          if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+            return parsed[0];
+          }
+        } catch (e) {
+          console.error("Failed to parse image_url JSON string in getDisplayImageUrl:", e);
+          return defaultPlaceholder;
         }
-        
-        // Check each URL for valid image extension
+      } else if (imageUrl.trim() !== "") {
+        return imageUrl;
+      }
+    }
+    return defaultPlaceholder;
+  };
+
+  // Handle adding an image URL
+  const handleAddImageUrl = () => {
+    if (currentImageUrl.trim() !== "") {
+      if (!(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(currentImageUrl))) {
+        toast({ title: "Invalid Image URL", description: "URL must end with valid extension.", variant: "destructive" });
+        return;
+      }
+      const currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+      setNewProduct(prev => ({ ...prev, image_url: [...currentImages, currentImageUrl.trim()] }));
+      setCurrentImageUrl('');
+    }
+  };
+
+  // Handle removing an image URL
+  const handleRemoveImageUrl = (idx: number) => {
+    if (Array.isArray(newProduct.image_url)) {
+      const updatedImageUrls = newProduct.image_url.filter((_, i) => i !== idx);
+      setNewProduct(prev => ({ ...prev, image_url: updatedImageUrls }));
+    }
+  };
+  
+  const filteredProducts = products.filter(product => 
+    (product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase())) &&
+    (productTypeFilter === 'all' || product.type === productTypeFilter)
+  );
+
+  const filteredOrders = orders.filter(order =>
+    (order.user_details?.full_name?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
+    order.user_details?.mobile_number?.includes(orderSearchTerm) ||
+    order.id.toString().includes(orderSearchTerm)) &&
+    (orderStatusFilter === 'all' || order.status === orderStatusFilter)
+  );
+
+  const handleSaveProduct = async () => {
+    try {
+      if (!newProduct.name || !newProduct.price || !newProduct.type) {
+        toast({ title: "Missing required fields", description: "Name, Type, and Price are required.", variant: "destructive" });
+        return;
+      }
+      if (!newProduct.image_url || (Array.isArray(newProduct.image_url) && newProduct.image_url.length === 0)) {
+        toast({ title: "Image required", description: "Please add at least one product image.", variant: "destructive" });
+        return;
+      }
+      if (Array.isArray(newProduct.image_url)) {
         const invalidUrls = newProduct.image_url.filter(url => !(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(url)));
         if (invalidUrls.length > 0) {
-          toast({
-            title: "Invalid image URL",
-            description: "All image URLs must end with a valid image extension (.jpeg, .png, .webp, etc).",
-            variant: "destructive"
-          });
+          toast({ title: "Invalid image URL", description: "All URLs must be valid image links.", variant: "destructive" });
           return;
         }
-      } else if (typeof newProduct.image_url === 'string' && !(/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(newProduct.image_url))) {
-        toast({
-          title: "Invalid image URL",
-          description: "Image URL must end with a valid image extension (.jpeg, .png, .webp, etc).",
-          variant: "destructive"
-        });
-        return;
-      }if (editingProduct) {
-        // Update existing product
-        const { error } = await supabase
-          .from('products')
-          .update({
-            name: newProduct.name,
-            description: newProduct.description,
-            price: newProduct.price,
-            stock_quantity: newProduct.stock_quantity,
-            image_url: newProduct.image_url,
-            updated_at: new Date(),
-            b2b_price: newProduct.b2b_price,
-            b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
-            is_b2b: newProduct.is_b2b,
-            type: newProduct.type
-          })
-          .eq('id', editingProduct.id)
-          .select();
+      }
 
-        if (error) throw error;
-        
-        toast({
-          title: "Product updated",
-          description: `${newProduct.name} has been successfully updated.`
-        });      } else {        // Create new product
-        const { error } = await supabase
-          .from('products')
-          .insert([{
-            name: newProduct.name,
-            description: newProduct.description,
-            price: newProduct.price,
-            stock_quantity: newProduct.stock_quantity,
-            image_url: newProduct.image_url,
-            b2b_price: newProduct.b2b_price,
-            b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
-            is_b2b: newProduct.is_b2b,
-            type: newProduct.type
-          }])
-          .select();
+      const productData = {
+        name: newProduct.name,
+        description: newProduct.description,
+        price: newProduct.price,
+        stock_quantity: newProduct.stock_quantity,
+        image_url: newProduct.image_url, // Supabase can handle array of strings if column type is text[] or jsonb
+        b2b_price: newProduct.b2b_price,
+        b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
+        is_b2b: newProduct.is_b2b,
+        type: newProduct.type,
+        updated_at: new Date(),
+      };
 
+      if (editingProduct) {
+        const { error } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
         if (error) throw error;
-        
-        toast({
-          title: "Product created",
-          description: `${newProduct.name} has been successfully created.`
-        });
-      }      // Reset form and refresh products
+        toast({ title: "Product updated", description: `${newProduct.name} updated.` });
+      } else {
+        const { error } = await supabase.from('products').insert([productData]).select();
+        if (error) throw error;
+        toast({ title: "Product created", description: `${newProduct.name} created.` });
+      }
       setEditingProduct(null);
-      setNewProduct({
-        name: '',
-        description: '',
-        price: 0,
-        stock_quantity: 0,
-        image_url: [] as string[],
-        b2b_price: 0,
-        b2b_minimum_quantity: 25,
-        is_b2b: false,
-        type: 'Fruits', // Reset to default type
-      });
+      setNewProduct(initialNewProductState);
       setCurrentImageUrl('');
       fetchProducts();
     } catch (error) {
       console.error('Error saving product:', error);
-      toast({
-        title: "Error saving product",
-        description: "There was an error saving the product. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error saving product", description: "Please try again.", variant: "destructive" });
     }
   };
-  // Handle product edit
+
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setNewProduct({
@@ -441,638 +311,242 @@ const AdminPage: React.FC = () => {
       price: product.price,
       stock_quantity: product.stock_quantity,
       image_url: product.image_url,
-      b2b_price: product.b2b_price || 0,
-      b2b_minimum_quantity: product.b2b_minimum_quantity || 25,
-      is_b2b: product.is_b2b || false,
-      type: product.type || 'Fruits', // Include type with default fallback
+      b2b_price: product.b2b_price, // Corrected: direct assignment
+      b2b_minimum_quantity: product.b2b_minimum_quantity, // Corrected: direct assignment
+      is_b2b: product.is_b2b,
+      type: product.type,
     });
   };
 
-  // Handle product delete
   const handleDeleteProduct = async (productId: number) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
-    
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
+      const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) throw error;
-      
-      toast({
-        title: "Product deleted",
-        description: "The product has been successfully deleted."
-      });
+      toast({ title: "Product deleted", description: "Product successfully deleted." });
       fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast({
-        title: "Error deleting product",
-        description: "There was an error deleting the product. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error deleting product", description: "Please try again.", variant: "destructive" });
     }
   };
 
-  // Handle order status update
   const handleUpdateOrderStatus = async (orderId: number, status: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          status,
-          updated_at: new Date()
-        })
-        .eq('id', orderId);
-
+      const { error } = await supabase.from('orders').update({ status, updated_at: new Date() }).eq('id', orderId);
       if (error) throw error;
-      
-      toast({
-        title: "Order status updated",
-        description: `Order #${orderId} status changed to ${status}.`
-      });
+      toast({ title: "Order status updated", description: `Order #${orderId} status changed to ${status}.` });
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
-      toast({
-        title: "Error updating order",
-        description: "There was an error updating the order status. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error updating order", description: "Please try again.", variant: "destructive" });
     }
   };
 
-  // Loading state
   if (loading.adminCheck) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-lg">Verifying admin access...</p>
-        </div>
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen bg-background"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div><p className="ml-4 text-lg text-muted-foreground">Verifying access...</p></div>;
   }
-
-  // Access denied
   if (!isAdmin) {
-    return null; // The useEffect will handle redirect
+    return <div className="flex items-center justify-center min-h-screen bg-background"><p className="text-lg text-destructive">Access Denied. Redirecting...</p></div>;
   }
+  
+  const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
+  const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled'];
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-12">
-      <div className="container mx-auto px-6">
-        <h1 className="text-3xl font-bold mb-6 text-primary">Admin Dashboard</h1>
-        
-        <Tabs defaultValue="products" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="products" className="flex items-center">
-              <Package className="mr-2 h-4 w-4" /> Products
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center">
-              <ShoppingBag className="mr-2 h-4 w-4" /> Orders
-            </TabsTrigger>
-          </TabsList>
-          
-          {/* Products Tab */}
-          <TabsContent value="products">
-            <div className="bg-card rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Product Form Left Column */}
-                <div className="space-y-4">                  <div>
-                    <label className="block text-sm font-medium mb-1">Name *</label>
-                    <input 
-                      type="text" 
-                      value={newProduct.name} 
-                      onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="Product name"
-                      required
-                    />
-                  </div>
-                  
+    <div className="min-h-screen bg-background p-4 md:p-8 pt-20 md:pt-24">
+      <header className="mb-8"><h1 className="text-3xl md:text-4xl font-bold text-primary text-center">Admin Dashboard</h1></header>
+      <Tabs defaultValue="products" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-2 mb-6 bg-card shadow-sm">
+          <TabsTrigger value="products" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Package className="w-5 h-5 mr-2" /> Manage Products</TabsTrigger>
+          <TabsTrigger value="orders" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ShoppingBag className="w-5 h-5 mr-2" /> Manage Orders</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Product Management</h2>
+            <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
+              <h3 className="text-xl font-semibold text-foreground mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
+              <form onSubmit={(e) => { e.preventDefault(); handleSaveProduct(); }} className="space-y-4">
+                {/* Product Name and Type */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Type *</label>
-                    <select
-                      value={newProduct.type}
-                      onChange={(e) => setNewProduct({...newProduct, type: e.target.value})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      required
-                    >
-                      <option value="Fruits">Fruits</option>
-                      <option value="Vegetables">Vegetables</option>
-                      <option value="Leaves">Leaves</option>
+                    <label htmlFor="productName" className="block text-sm font-medium mb-1 text-foreground">Product Name *</label>
+                    <input id="productName" type="text" placeholder="e.g., Organic Apples" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required />
+                  </div>
+                  <div>
+                    <label htmlFor="productType" className="block text-sm font-medium mb-1 text-foreground">Product Type *</label>
+                    <select id="productType" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground" value={newProduct.type} onChange={(e) => setNewProduct({...newProduct, type: e.target.value})} required>
+                      {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
-                  
+                </div>
+                {/* Description */}
+                <div>
+                  <label htmlFor="productDescription" className="block text-sm font-medium mb-1 text-foreground">Description</label>
+                  <textarea id="productDescription" placeholder="Detailed product description" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" rows={3} value={newProduct.description || ''} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}></textarea>
+                </div>
+                {/* Price and Stock */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Price (₹) *</label>
-                    <input 
-                      type="number" 
-                      value={newProduct.price} 
-                      onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
+                    <label htmlFor="productPrice" className="block text-sm font-medium mb-1 text-foreground">Price (₹) *</label>
+                    <input id="productPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.price ?? ''} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} required />
                   </div>
-                  
                   <div>
-                    <label className="block text-sm font-medium mb-1">Stock Quantity *</label>
-                    <input 
-                      type="number" 
-                      value={newProduct.stock_quantity} 
-                      onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value)})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="0"
-                      min="0"
-                      required
-                    />
+                    <label htmlFor="productStock" className="block text-sm font-medium mb-1 text-foreground">Stock Quantity</label>
+                    <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
                   </div>
+                </div>
+                {/* Image URL Management */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-foreground">Product Images *</label>
+                  <div className="flex items-center mb-2">
+                    <input type="url" placeholder="Enter image URL (.jpg, .png, .webp)" className="flex-grow p-2 border border-border rounded-l-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentImageUrl} onChange={(e) => setCurrentImageUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl();}}} />
+                    <button type="button" onClick={handleAddImageUrl} className="p-2 bg-amber-500 text-white rounded-r-md hover:bg-amber-600 transition-colors flex items-center justify-center h-[42px] w-[42px]"> <ImagePlus size={20} /> </button>
+                  </div>
+                  <div className="space-y-2 mb-2 max-h-32 overflow-y-auto pr-2">
+                    {Array.isArray(newProduct.image_url) && newProduct.image_url.map((url, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md border border-border">
+                        <span className="text-xs text-muted-foreground truncate flex-grow mr-2" title={url}>{url}</span>
+                        <button type="button" onClick={() => handleRemoveImageUrl(idx)} className="text-red-500 hover:text-red-700 p-1"> <Trash2 size={16} /> </button>
+                      </div>
+                    ))}
+                  </div>
+                  {(!newProduct.image_url || (Array.isArray(newProduct.image_url) && newProduct.image_url.length === 0)) && (<p className="text-xs text-muted-foreground">No images added. Add at least one URL.</p>)}
+                </div>
+                {/* B2B Fields */}
+                <div className="pt-4 border-t border-border">
+                  <h4 className="text-md font-semibold text-foreground mb-2">B2B Settings</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                    <label className="block text-sm font-medium mb-1">Product Images *</label>
-                    <div className="flex gap-2 mb-2">
-                      <input 
-                        type="text" 
-                        value={currentImageUrl}
-                        onChange={(e) => setCurrentImageUrl(e.target.value)}
-                        className="flex-grow p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                        placeholder="https://example.com/image.png"
-                      />
-                      <button 
-                        className="bg-primary text-white p-2 rounded hover:bg-primary/80"
-                        title="Add image"
-                        type="button"
-                        onClick={() => {
-                          if (currentImageUrl && /\.(jpeg|jpg|png|gif|webp|svg)$/i.test(currentImageUrl)) {
-                            const updatedUrls = Array.isArray(newProduct.image_url) 
-                              ? [...newProduct.image_url, currentImageUrl]
-                              : [currentImageUrl];
-                            
-                            setNewProduct({...newProduct, image_url: updatedUrls});
-                            setCurrentImageUrl('');
-                          } else {
-                            toast({
-                              title: "Invalid image URL",
-                              description: "Image URL must end with a valid image extension (.jpeg, .png, .webp, etc).",
-                              variant: "destructive"
-                            });
-                          }
-                        }}
-                      >
-                        <ImagePlus size={20} />
-                      </button>
+                      <label htmlFor="b2bPrice" className="block text-sm font-medium mb-1 text-foreground">B2B Price (₹)</label>
+                      <input id="b2bPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_price ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value) || null})} />
                     </div>
-                    
-                    {/* Image Gallery */}
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {Array.isArray(newProduct.image_url) && newProduct.image_url.map((url, index) => (
-                        <div key={index} className="relative group border rounded p-1">
-                          <img 
-                            src={url} 
-                            alt={`Product image ${index + 1}`} 
-                            className="h-16 w-full object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/static/images/product-placeholder.png';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updatedUrls = Array.isArray(newProduct.image_url) 
-                                  ? newProduct.image_url.filter((_, i) => i !== index)
-                                  : [];
-                                setNewProduct({...newProduct, image_url: updatedUrls});
-                              }}
-                              className="p-1 bg-red-500 rounded-full"
-                            >
-                              <Trash2 size={16} className="text-white" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Empty state if no images */}
-                      {(!Array.isArray(newProduct.image_url) || newProduct.image_url.length === 0) && (
-                        <div className="border rounded p-4 col-span-2 flex flex-col items-center justify-center text-muted-foreground">
-                          <ImagePlus size={24} className="mb-1" />
-                          <p className="text-xs">No images added yet</p>
-                        </div>
-                      )}
+                    <div>
+                      <label htmlFor="b2bMinQuantity" className="block text-sm font-medium mb-1 text-foreground">B2B Min. Quantity (kg)</label>
+                      <input id="b2bMinQuantity" type="number" placeholder="25" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_minimum_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value) || null})} />
                     </div>
-                    
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Add multiple images. First image will be the main product image.
-                    </p>
+                  </div>
+                  <div className="mt-3 flex items-center">
+                    <input id="isB2B" type="checkbox" className="h-4 w-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 mr-2" checked={newProduct.is_b2b || false} onChange={(e) => setNewProduct({...newProduct, is_b2b: e.target.checked})} />
+                    <label htmlFor="isB2B" className="text-sm font-medium text-foreground">Enable for B2B</label>
                   </div>
                 </div>
-                
-                {/* Product Form Right Column */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">B2B Price (₹) *</label>
-                    <input 
-                      type="number" 
-                      value={newProduct.b2b_price} 
-                      onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value)})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-1">B2B Minimum Quantity *</label>
-                    <input 
-                      type="number" 
-                      value={newProduct.b2b_minimum_quantity} 
-                      onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value)})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="25"
-                      min="1"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      id="is_b2b" 
-                      checked={newProduct.is_b2b} 
-                      onChange={(e) => setNewProduct({...newProduct, is_b2b: e.target.checked})}
-                      className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
-                    <label htmlFor="is_b2b" className="ml-2 block text-sm">
-                      Available for B2B
-                    </label>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
-                    <textarea 
-                      value={newProduct.description || ''} 
-                      onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                      className="w-full p-2 border rounded focus:ring-2 focus:ring-primary focus:outline-none"
-                      placeholder="Product description"
-                      rows={5}
-                    />
-                  </div>
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end space-x-3 pt-4">
+                  {editingProduct && (<button type="button" onClick={() => { setEditingProduct(null); setNewProduct(initialNewProductState); setCurrentImageUrl(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel Edit</button>)}
+                  <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center"> <Save size={18} className="mr-2"/> {editingProduct ? 'Update Product' : 'Create Product'} </button>
                 </div>
-              </div>
-              
-              <div className="mt-6 flex justify-end gap-3">                <button 
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setNewProduct({
-                      name: '',
-                      description: '',
-                      price: 0,
-                      stock_quantity: 0,
-                      image_url: [] as string[],
-                      b2b_price: 0,
-                      b2b_minimum_quantity: 25,
-                      is_b2b: false,
-                      type: 'Fruits', // Reset to default type
-                    });
-                    setCurrentImageUrl('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleSaveProduct}
-                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 flex items-center"
-                >
-                  <Save size={18} className="mr-1" />
-                  {editingProduct ? 'Update Product' : 'Add Product'}
-                </button>
-              </div>
+              </form>
             </div>
-            
             {/* Product List */}
-            <div className="bg-card rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b flex flex-col md:flex-row items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Products</h2>                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-                  <div className="relative flex-grow md:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input 
-                      type="text"
-                      placeholder="Search products..."
-                      className="w-full pl-10 pr-4 py-2 border rounded-md"
-                      value={productSearchTerm}
-                      onChange={(e) => setProductSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <select
-                    value={productTypeFilter}
-                    onChange={(e) => setProductTypeFilter(e.target.value)}
-                    className="py-2 px-3 border rounded-md"
-                    title="Filter by type"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="Fruits">Fruits</option>
-                    <option value="Vegetables">Vegetables</option>
-                    <option value="Leaves">Leaves</option>
-                  </select>
-                  <button 
-                    onClick={fetchProducts} 
-                    className="p-2 border rounded-md hover:bg-gray-100"
-                    title="Refresh products"
-                  >
-                    <RefreshCw size={20} className={loading.products ? "animate-spin" : ""} />
-                  </button>
-                </div>
+            <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
+              <div className="relative flex-grow w-full md:w-auto">
+                <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">                  <thead className="bg-gray-50">
+              <div className="relative flex-grow w-full md:w-auto">
+                <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={productTypeFilter} onChange={(e) => setProductTypeFilter(e.target.value)}>
+                  <option value="all">All Types</option>
+                  {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                </select>
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              </div>
+              <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
+            </div>
+            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                  <thead className="bg-muted/50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">B2B Details</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Image</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price (₹)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">B2B</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Updated</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">                    {loading.products ? (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                          Loading products...
+                  <tbody className="divide-y divide-border">
+                    {filteredProducts.length > 0 ? filteredProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <img src={getDisplayImageUrl(product.image_url, product.type)} alt={product.name} className="w-16 h-16 object-contain rounded-md bg-white border border-border p-0.5" onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { const target = e.target as HTMLImageElement; target.src = getDisplayImageUrl(null, product.type); target.onerror = null; }} />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm font-medium text-foreground truncate max-w-xs" title={product.name}>{product.name}</div><div className="text-xs text-muted-foreground truncate max-w-xs" title={product.description || undefined}>{product.description || "-"}</div></td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.type}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">{product.price.toFixed(2)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          {product.is_b2b ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{new Date(product.updated_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => handleEditProduct(product)} className="text-amber-600 hover:text-amber-700 mr-3 p-1" title="Edit Product"><Edit size={18}/></button>
+                          <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-700 p-1" title="Delete Product"><Trash2 size={18}/></button>
                         </td>
                       </tr>
-                    ) : filteredProducts.length > 0 ? (
-                      filteredProducts.map((product) => (
-                        <tr key={product.id} className="hover:bg-gray-50">                          <td className="px-6 py-4 whitespace-nowrap">
-                            {product.image_url ? (
-                              <div className="relative group">
-                                <img                                  src={
-                                    Array.isArray(product.image_url) && product.image_url.length > 0
-                                      ? product.image_url[0]
-                                      : typeof product.image_url === 'string'
-                                        ? product.image_url
-                                        : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
-                                  }
-                                  alt={product.name} 
-                                  className="h-12 w-12 object-contain bg-white rounded"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/static/images/product-placeholder.png';
-                                  }}
-                                />
-                                {Array.isArray(product.image_url) && product.image_url.length > 1 && (
-                                  <span className="absolute -top-1 -right-1 bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                                    {product.image_url.length}
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                                <Package size={24} className="text-gray-400" />
-                              </div>
-                            )}
-                          </td><td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500 truncate max-w-xs">
-                              {product.description?.substring(0, 50)}{product.description?.length > 50 ? '...' : ''}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                              {product.type || 'Unspecified'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">₹{product.price.toLocaleString('en-IN')}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span 
-                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                product.stock_quantity > 10 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : product.stock_quantity > 0 
-                                    ? 'bg-yellow-100 text-yellow-800' 
-                                    : 'bg-red-100 text-red-800'
-                              }`}
-                            >
-                              {product.stock_quantity}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {product.is_b2b ? (
-                              <>
-                                <div>Price: ₹{product.b2b_price?.toLocaleString('en-IN') || 'N/A'}</div>
-                                <div>Min Qty: {product.b2b_minimum_quantity || 'N/A'}</div>
-                              </>
-                            ) : (
-                              <span className="text-gray-400">Not available for B2B</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button 
-                              onClick={() => handleEditProduct(product)}
-                              className="text-indigo-600 hover:text-indigo-900 mr-3"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (                      <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                          No products found.
-                        </td>
-                      </tr>
-                    )}
+                    )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No products found.</td></tr>)}
                   </tbody>
                 </table>
               </div>
-            </div>
-          </TabsContent>
-          
-          {/* Orders Tab */}
-          <TabsContent value="orders">
-            <div className="bg-card rounded-lg shadow overflow-hidden">
-              <div className="p-4 border-b flex flex-col md:flex-row items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Orders</h2>
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                  <div className="relative flex-grow md:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input 
-                      type="text"
-                      placeholder="Search orders..."
-                      className="w-full pl-10 pr-4 py-2 border rounded-md"
-                      value={orderSearchTerm}
-                      onChange={(e) => setOrderSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="relative flex-grow md:max-w-xs">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <select
-                      className="w-full pl-10 pr-4 py-2 border rounded-md appearance-none"
-                      value={orderStatusFilter}
-                      onChange={(e) => setOrderStatusFilter(e.target.value)}
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="orders">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Order Management</h2>
+            <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
+                <div className="relative flex-grow w-full md:w-auto">
+                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="relative flex-grow w-full md:w-auto">
+                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
+                        {orderStatuses.map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))}
                     </select>
-                  </div>
-                  <button 
-                    onClick={fetchOrders} 
-                    className="p-2 border rounded-md hover:bg-gray-100"
-                    title="Refresh orders"
-                  >
-                    <RefreshCw size={20} className={loading.orders ? "animate-spin" : ""} />
-                  </button>
+                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {loading.orders ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                          Loading orders...
-                        </td>
-                      </tr>
-                    ) : filteredOrders.length > 0 ? (
-                      filteredOrders.map((order) => (
-                        <tr key={order.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">#{order.id}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {order.user_details?.full_name || 'Anonymous'}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {order.user_details?.mobile_number || 'No phone'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {new Date(order.created_at).toLocaleTimeString()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              ₹{order.total_amount.toLocaleString('en-IN')}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {order.items.length} items
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                              order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                              order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Payment: {order.payment_status.charAt(0).toUpperCase() + order.payment_status.slice(1)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <details className="relative inline-block text-left">
-                              <summary className="cursor-pointer px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200">
-                                Update Status
-                              </summary>
-                              <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                                <div className="py-1" role="menu">
-                                  <button
-                                    onClick={() => handleUpdateOrderStatus(order.id, 'pending')}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                                    role="menuitem"
-                                  >
-                                    <Clock size={18} className="mr-2 text-yellow-500" />
-                                    Pending
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateOrderStatus(order.id, 'processing')}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                                    role="menuitem"
-                                  >
-                                    <RefreshCw size={18} className="mr-2 text-blue-500" />
-                                    Processing
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                                    role="menuitem"
-                                  >
-                                    <CheckCircle size={18} className="mr-2 text-green-500" />
-                                    Delivered
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                                    role="menuitem"
-                                  >
-                                    <XCircle size={18} className="mr-2 text-red-500" />
-                                    Cancelled
-                                  </button>
-                                </div>
-                              </div>
-                            </details>
-                            <div>
-                              <button
-                                onClick={() => alert('Order details: ' + JSON.stringify(order.items))}
-                                className="text-xs text-blue-600 hover:text-blue-900 mt-1 block"
-                              >
-                                View Items
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                          No orders found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                <button onClick={() => { fetchOrders(); toast({ title: "Orders Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Order List"> <RefreshCw size={18} /> </button>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+            {loading.orders ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading orders...</p></div>) : (
+            <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                    <thead className="bg-muted/50">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Order ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Total (₹)</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Items</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                        <tr key={order.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary">#{order.id}</td>
+                            <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm text-foreground">{order.user_details?.full_name || 'N/A'}</div><div className="text-xs text-muted-foreground">{order.user_details?.mobile_number || order.user_id}</div></td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">{order.total_amount.toFixed(2)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'processing' ? 'bg-blue-100 text-blue-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{order.status}</span></td>
+                            <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800' }`}>{order.payment_status}</span></td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">{order.items.length} item(s) <ul className="text-xs list-disc list-inside">{order.items.slice(0,2).map(item => ( <li key={item.id} className="truncate max-w-[150px]" title={item.product_name}>{item.quantity}x {item.product_name}</li>))}{order.items.length > 2 && <li>...and {order.items.length - 2} more</li>}</ul></td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td>
+                        </tr>
+                        )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No orders found.</td></tr>)}
+                    </tbody>
+                </table>
+            </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

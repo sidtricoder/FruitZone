@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Search, Filter } from 'lucide-react';
-import VanillaTilt from 'vanilla-tilt';
 import { gsap } from 'gsap';
 import LazyImage from '@/components/ui/LazyImage';
 import { useCart } from '@/contexts/CartContext';
@@ -33,28 +32,8 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null); // cardRef might still be used by GSAP or other logic, so keep it for now.
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    // Initialize VanillaTilt
-    if (cardRef.current) {
-      VanillaTilt.init(cardRef.current, {
-        max: 2,
-        speed: 40,
-        glare: true,
-        "max-glare": 0.1, // Also reducing glare slightly for a more subtle effect
-        perspective: 100,
-      });
-    }
-    
-    // Cleanup VanillaTilt on component unmount
-    return () => {
-      if (cardRef.current && (cardRef.current as any).vanillaTilt) {
-        (cardRef.current as any).vanillaTilt.destroy();
-      }
-    };
-  }, []);
 
   const handleAddToCartClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent navigating to product page
