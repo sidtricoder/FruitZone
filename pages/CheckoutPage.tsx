@@ -6,12 +6,18 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
-  category: string;
+  description: string | null;
   price: number;
-  imageUrl: string;
-  description: string;
+  stock_quantity: number | null;
+  image_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  b2b_price: number | null;
+  b2b_minimum_quantity: number | null;
+  is_b2b: boolean;
+  type?: string | null;
 }
 
 interface CartItem extends Product {
@@ -82,9 +88,7 @@ const CheckoutPage: React.FC = () => {
       navigate('/shop'); 
       setIsSubmitting(false);
       return;
-    }
-
-    const orderData = {
+    }    const orderDetails = {
       user_id: userId,
       status: 'pending',
       total_amount: totalAmount,
@@ -96,22 +100,48 @@ const CheckoutPage: React.FC = () => {
       shipping_country: formData.country,
       shipping_phone_number: formData.phone,
     };
-
+    
     try {
-      const { data, error } = await supabase
+      // Insert order first
+      const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .insert([orderData])
+        .insert([orderDetails])
         .select();
 
-      if (error) {
-        console.error('Error inserting order:', error);
-        alert(`Error placing order: ${error.message}`);
+      if (orderError) {
+        console.error('Error inserting order:', orderError);
+        alert(`Error placing order: ${orderError.message}`);
         setIsSubmitting(false);
         return;
       }
 
-      console.log('Order submitted successfully:', data);
+      // Get the new order ID
+      const orderId = orderData[0].id;
+
+      // Create order items for each product in the cart
+      const orderItems = cartItems.map(item => ({
+        order_id: orderId,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+
+      // Insert order items
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error inserting order items:', itemsError);
+        alert(`Error saving order items: ${itemsError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('Order submitted successfully:', orderData);
       alert('Order placed successfully!');
+      // Clear cart after successful order
+      localStorage.removeItem('fruitZoneCart');
       navigate('/'); 
     } catch (err) {
       console.error('Unexpected error:', err);

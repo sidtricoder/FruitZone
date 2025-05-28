@@ -4,67 +4,26 @@ import { MessageSquare, Search, Filter } from 'lucide-react';
 import VanillaTilt from 'vanilla-tilt';
 import { gsap } from 'gsap';
 import LazyImage from '@/components/ui/LazyImage';
+import { supabase } from '@/lib/supabaseClient';
+import { useToast } from '@/components/ui/use-toast';
 
 // Export Product interface for CartContext to use
 export interface Product {
-  id: string;
+  id: number;
   name: string;
-  category: string;
+  description: string | null;
   price: number;
-  imageUrl: string;
-  description: string;
+  stock_quantity: number | null;
+  image_url: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  b2b_price: number | null;
+  b2b_minimum_quantity: number | null;
+  is_b2b: boolean;
+  type?: string | null;
 }
 
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Dehydrated Apple Slices',
-    category: 'Fruits',
-    price: 499,
-    imageUrl: '/static/images/product-apple.jpg',
-    description: 'Crisp, sweet, and intensely apple-y. Perfect for healthy snacking or elevating your morning oatmeal.'
-  },
-  {
-    id: '2',
-    name: 'Sun-Kissed Tomato Halves',
-    category: 'Vegetables',
-    price: 625,
-    imageUrl: '/static/images/product-tomato.jpg',
-    description: 'Rich, umami-packed flavor bombs. Ideal for artisanal pasta, vibrant salads, and gourmet sauces.'
-  },
-  {
-    id: '3',
-    name: 'Velvet Mango Cheeks',
-    category: 'Fruits',
-    price: 750,
-    imageUrl: '/static/images/product-mango.jpg',
-    description: 'Sweet, chewy, and bursting with tropical sunshine. A delightful and guilt-free healthy indulgence.'
-  },
-  {
-    id: '4',
-    name: 'Sweet Carrot Ribbons',
-    category: 'Vegetables',
-    price: 415,
-    imageUrl: '/static/images/product-carrot.jpg',
-    description: 'Naturally sweet with a satisfying crunch. A vibrant, nutrient-dense alternative to potato chips.'
-  },
-  {
-    id: '5',
-    name: 'Ruby Red Strawberry Slices',
-    category: 'Fruits',
-    price: 835,
-    imageUrl: '/static/images/product-strawberry.jpg',
-    description: 'Intensely flavorful and aromatic. Perfect for cereals, desserts, or as a standalone gourmet snack.'
-  },
-  {
-    id: '6',
-    name: 'Rainbow Bell Pepper Confetti',
-    category: 'Vegetables',
-    price: 525,
-    imageUrl: '/static/images/product-pepper.jpg',
-    description: 'A vibrant mix of sweet and colorful dehydrated peppers. Adds a pop of flavor and color to any dish.'
-  }
-];
+// No mock products anymore, we'll fetch from Supabase
 
 interface ProductCardProps {
   product: Product;
@@ -115,10 +74,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-    >
-      <div className="overflow-hidden">
+    >      <div className="overflow-hidden">
         <LazyImage 
-          src={product.imageUrl} 
+          src={product.image_url || '/static/images/product-placeholder.png'} 
           alt={product.name} 
           className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out" 
           loading="lazy" 
@@ -128,10 +86,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
       <div className="p-6">
         <h3 className="text-xl font-semibold text-primary mb-2 truncate" title={product.name}>{product.name}</h3>
-        <p className="text-sm text-muted-foreground mb-1 capitalize">{product.category}</p>
-        <p className="text-foreground font-bold text-2xl mb-3">₹{product.price.toLocaleString('en-IN')}</p>
-        <p className="text-muted-foreground text-sm mb-2 h-12 overflow-hidden text-ellipsis">{product.description}</p>
-        <p className="text-amber-600 text-xs mb-4 font-medium">Minimum order quantity: 25kg</p>
+        <p className="text-sm text-muted-foreground mb-1 capitalize">{product.type || 'General'}</p>
+        <p className="text-foreground font-bold text-2xl mb-3">₹{(product.b2b_price || product.price).toLocaleString('en-IN')}</p>
+        <p className="text-muted-foreground text-sm mb-2 h-12 overflow-hidden text-ellipsis">{product.description || 'No description available'}</p>
+        <p className="text-amber-600 text-xs mb-4 font-medium">Minimum order quantity: {product.b2b_minimum_quantity || 25}kg</p>
         <button 
           ref={buttonRef}
           onClick={handleEnquiryClick}
@@ -148,12 +106,55 @@ const B2BPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>(['All']);
   const shopTitleRef = useRef<HTMLHeadingElement>(null);
   const filtersRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
-  // Simulate fetching products
+  // Fetch B2B products from Supabase
   useEffect(() => {
-    setProducts(mockProducts);
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch B2B products from Supabase - only those with is_b2b = true
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_b2b', true)
+          .order('name', { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data) {
+          setProducts(data);
+          
+          // Extract unique product types (categories)
+          const productTypes = new Set<string>();
+          data.forEach(product => {
+            if (product.type) {
+              productTypes.add(product.type);
+            }
+          });
+          
+          setCategories(['All', ...Array.from(productTypes)]);
+        }
+      } catch (error) {
+        console.error('Error fetching B2B products:', error);
+        toast({
+          title: "Error loading products",
+          description: "There was an error loading B2B products. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
 
     // GSAP Animations for Shop Page Title and Filters
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -173,42 +174,48 @@ const B2BPage: React.FC = () => {
     }
 
     // Setup GSAP animations for product cards
-    const productCards = document.querySelectorAll('.product-card-container');
-    if (productCards.length > 0 && !prefersReducedMotion) {
-      gsap.fromTo(productCards, 
-        { opacity: 0, y: 50 }, 
-        {
-          opacity: 1, 
-          y: 0, 
-          duration: 0.6, 
-          stagger: 0.15, 
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: ".product-grid-container",
-            start: "top 80%",
-            toggleActions: "play none none none",
+    const setUpProductCardAnimations = () => {
+      if (prefersReducedMotion) return;
+      
+      const productCards = document.querySelectorAll('.product-card-container');
+      if (productCards.length > 0) {
+        gsap.fromTo(productCards, 
+          { opacity: 0, y: 50 }, 
+          {
+            opacity: 1, 
+            y: 0, 
+            duration: 0.6, 
+            stagger: 0.15, 
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: ".product-grid-container",
+              start: "top 80%",
+              toggleActions: "play none none none",
+            }
           }
-        }
-      );
+        );
+      }
+    };
+
+    // Call after products are fetched and rendered
+    if (!loading && products.length > 0) {
+      setTimeout(setUpProductCardAnimations, 100);
     }
 
     return () => {
       // Cleanup GSAP animations
       if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
       if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
-      gsap.killTweensOf(productCards);
     };
-  }, []);
+  }, [toast]);
 
   const filteredProducts = products
     .filter(product => 
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .filter(product => 
-      filterCategory === 'All' || product.category === filterCategory
+      filterCategory === 'All' || product.type === filterCategory
     );
-
-  const categories = ['All', ...new Set(mockProducts.map(p => p.category))];
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12">
@@ -265,10 +272,12 @@ const B2BPage: React.FC = () => {
             </select>
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           </div>
-        </motion.div>
-
-        {/* Product Grid */}
-        {filteredProducts.length > 0 ? (
+        </motion.div>        {/* Product Grid */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 product-grid-container">
             {filteredProducts.map((product) => (
               <motion.div
@@ -286,7 +295,7 @@ const B2BPage: React.FC = () => {
             transition={{ duration: 0.5 }}
             className="text-center text-xl text-muted-foreground py-10"
           >
-            No products found matching your criteria. Try adjusting your search or filters.
+            No B2B products found matching your criteria. Try adjusting your search or filters.
           </motion.p>
         )}
         
