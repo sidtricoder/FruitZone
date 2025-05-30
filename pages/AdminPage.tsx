@@ -385,13 +385,49 @@ const AdminPage: React.FC = () => {
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
+
+    let processedImageUrls: string[] = [];
+    if (product.image_url) {
+      try {
+        if (typeof product.image_url === 'string' && product.image_url.startsWith('[') && product.image_url.endsWith(']')) {
+          // Attempt to parse if it's a string that looks like a JSON array
+          const parsed = JSON.parse(product.image_url);
+          if (Array.isArray(parsed)) {
+            processedImageUrls = parsed.filter(url => typeof url === 'string');
+          } else if (typeof parsed === 'string') {
+            processedImageUrls = [parsed]; // If parsing results in a single string somehow
+          } else {
+            console.warn("Parsed image_url string was not an array or string:", parsed);
+            processedImageUrls = [];
+          }
+        } else if (Array.isArray(product.image_url)) {
+          // If it's already an array, use it directly, ensuring all elements are strings
+          processedImageUrls = product.image_url.filter(url => typeof url === 'string');
+        } else if (typeof product.image_url === 'string' && product.image_url.trim() !== '') {
+          // If it's a single, non-empty string URL
+          processedImageUrls = [product.image_url];
+        } else {
+          // Fallback for other unexpected types or empty string
+          processedImageUrls = [];
+        }
+      } catch (e) {
+        console.error("Error parsing image_url for product:", product.id, product.image_url, e);
+        // Fallback: if it was a string and parsing failed, try to treat as single URL if not empty.
+        // Otherwise, default to empty array.
+        if (typeof product.image_url === 'string' && product.image_url.trim() !== '') {
+          processedImageUrls = [product.image_url];
+        } else {
+          processedImageUrls = [];
+        }
+      }
+    }
+
     setNewProduct({
       name: product.name,
       description: product.description,
       price: product.price,
       stock_quantity: product.stock_quantity,
-      // Ensure image_url is always an array for consistency in the form
-      image_url: Array.isArray(product.image_url) ? product.image_url : (product.image_url ? [product.image_url] : []),
+      image_url: processedImageUrls, // Use the robustly parsed URLs
       b2b_price: product.b2b_price,
       b2b_minimum_quantity: product.b2b_minimum_quantity,
       is_b2b: product.is_b2b,
@@ -401,8 +437,6 @@ const AdminPage: React.FC = () => {
       bbe: product.bbe,
       delivery_info: product.delivery_info,
       // discount_percentage, discount_reason, and nutrient_info are handled separately
-      // So, we don't load them into the main product form here to avoid confusion.
-      // They will be displayed in the product list and editable via their dedicated forms.
     });
     setCurrentImageUrl(''); // Clear the input field for new image URLs
     setImagePreviewUrl(null); // Clear the preview for the new image URL input
