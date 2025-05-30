@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, ArrowLeft, Share2, Star } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -334,14 +334,25 @@ const ProductPage: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-             <div className="bg-white rounded-xl overflow-hidden h-[400px] md:h-[500px] flex items-center justify-center relative group">
-              <LazyImage 
-                src={images[selectedImageIndex]} 
-                alt={product.name}
-                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
-                width={600}
-                height={600}
-              />
+             <div className="bg-background rounded-xl overflow-hidden h-[400px] md:h-[500px] flex items-center justify-center relative group">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedImageIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full h-full"
+                >
+                  <LazyImage 
+                    src={images[selectedImageIndex]} 
+                    alt={product.name}
+                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+                    width={600}
+                    height={600}
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
             
             {images.length > 1 && (
@@ -464,12 +475,30 @@ const ProductPage: React.FC = () => {
                 <span className="ml-2 sm:hidden">Share</span>
               </button>
             </div>
+            <AnimatePresence>
              {product.stock_quantity !== undefined && product.stock_quantity <= 0 && (
-                <p className="text-sm text-red-500 dark:text-red-400 mt-2">This product is currently out of stock.</p>
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="text-sm text-red-500 dark:text-red-400 mt-2"
+                >
+                  This product is currently out of stock.
+                </motion.p>
             )}
+            </AnimatePresence>
+            <AnimatePresence>
             {product.stock_quantity !== undefined && product.stock_quantity > 0 && product.stock_quantity < 10 && (
-                 <p className="text-sm text-orange-500 dark:text-orange-400 mt-2">Hurry! Only {product.stock_quantity} left in stock.</p>
+                 <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="text-sm text-orange-500 dark:text-orange-400 mt-2"
+                 >
+                   Hurry! Only {product.stock_quantity} left in stock.
+                 </motion.p>
             )}
+            </AnimatePresence>
 
 
             {/* Product Description and Nutrient Information Container */}
@@ -523,15 +552,25 @@ const ProductPage: React.FC = () => {
                 </button>
               </div>
 
-              {showReviewForm && (
-                <ReviewForm 
-                  productId={product.id} 
-                  onReviewSubmitted={() => {
-                    fetchReviews(product.id);
-                    setShowReviewForm(false);
-                  }} 
-                />
-              )}
+              <AnimatePresence>
+                {showReviewForm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden" // Added to prevent content spill during animation
+                  >
+                    <ReviewForm 
+                      productId={product.id} 
+                      onReviewSubmitted={() => {
+                        fetchReviews(product.id);
+                        setShowReviewForm(false);
+                      }} 
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {loadingReviews ? (
                  <div className="flex justify-center items-center py-8">
