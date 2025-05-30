@@ -1,28 +1,50 @@
-// filepath: a:\\New folder\\FruitZone\\pages\\ShopPage.tsx
+// filepath: /home/siddharth/Desktop/FruitZone/pages/ShopPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Search, Filter } from 'lucide-react';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import LazyImage from '@/components/ui/LazyImage';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
-// Export Product interface for CartContext to use
+gsap.registerPlugin(ScrollTrigger);
+
+export interface NutrientInfo {
+  energy_kcal?: string;
+  carbohydrates_g?: string;
+  dietary_fiber_g?: string;
+  saturated_fat_g?: string;
+  protein_g?: string;
+  total_fat_g?: string;
+  [key: string]: string | undefined; // Allows for additional nutrient fields
+}
+
 export interface Product {
   id: number;
   name: string;
-  description: string | null;
-  price: number;
-  stock_quantity: number | null;
-  image_url: string | string[] | null; // Now can be a string or array of strings
-  created_at: string | null;
-  updated_at: string | null;
-  b2b_price: number | null;
-  b2b_minimum_quantity: number | null;
-  is_b2b: boolean;
-  type?: string | null; // This will be used as the category
+  description: string;
+  price: number; // This is 'x', the discounted price set by admin
+  image_url: string | string[];
+  type?: string;
+  // stock?: number; // Consolidate with stock_quantity
+  // New fields for ProductPage UI and Admin management
+  brand?: string;
+  origin?: string;
+  bbe?: string; // Best Before End, e.g., "3 months"
+  delivery_info?: string; // e.g., "3 to 5 days"
+  discount_percentage?: number | null; // 'z', e.g., 20 for 20% - Updated to allow null
+  discount_reason?: string | null; // Reason for the discount - Updated to allow null
+  nutrient_info?: NutrientInfo; // Nested object for nutrient details
+  // Fields from AdminPage.tsx that should be consolidated
+  stock_quantity?: number; // Use this as the primary stock field
+  created_at?: string;
+  updated_at?: string;
+  b2b_price?: number | null;
+  b2b_minimum_quantity?: number | null;
+  is_b2b?: boolean;
 }
 
 interface ProductCardProps {
@@ -32,14 +54,12 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
-  const cardRef = useRef<HTMLDivElement>(null); // cardRef might still be used by GSAP or other logic, so keep it for now.
+  const cardRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleAddToCartClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigating to product page
+    e.stopPropagation();
     addToCart(product);
-    
-    // GSAP animation for button
     if (buttonRef.current) {
       gsap.timeline()
         .to(buttonRef.current, { scale: 0.9, duration: 0.1, ease: 'power1.inOut' })
@@ -61,29 +81,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       onClick={navigateToProductPage}
-    >      <div className="overflow-hidden">
+    >
+      <div className="overflow-hidden">
         <LazyImage 
           src={(() => {
             const defaultPlaceholder = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
             const imgUrl = product.image_url;
-
-            if (Array.isArray(imgUrl) && imgUrl.length > 0 && typeof imgUrl[0] === 'string') {
-              return imgUrl[0];
-            }
-
+            if (Array.isArray(imgUrl) && imgUrl.length > 0 && typeof imgUrl[0] === 'string') return imgUrl[0];
             if (typeof imgUrl === 'string') {
               if (imgUrl.startsWith('[') && imgUrl.endsWith(']')) {
                 try {
                   const parsedUrls = JSON.parse(imgUrl);
-                  if (Array.isArray(parsedUrls) && parsedUrls.length > 0 && typeof parsedUrls[0] === 'string') {
-                    return parsedUrls[0];
-                  }
-                } catch (e) {
-                  console.warn('ShopPage: Failed to parse image_url JSON string, using placeholder:', imgUrl, e);
-                }
-              } else if (imgUrl.trim() !== "") {
-                return imgUrl;
-              }
+                  if (Array.isArray(parsedUrls) && parsedUrls.length > 0 && typeof parsedUrls[0] === 'string') return parsedUrls[0];
+                } catch (e) { console.warn('ShopPage: Failed to parse image_url JSON string', imgUrl, e); }
+              } else if (imgUrl.trim() !== "") return imgUrl;
             }
             return defaultPlaceholder;
           })()} 
@@ -92,8 +103,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           loading="lazy" 
           width={400} 
           height={256}
-          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { // Typed 'e' here
-            console.log('Image load error in ShopPage for product:', product.name, 'Attempted src:', (e.target as HTMLImageElement).src);
+          onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
             (e.target as HTMLImageElement).src = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
           }} 
         />
@@ -137,12 +147,12 @@ const ShopPage: React.FC = () => {
 
         if (error) throw error;
         if (data) {
-          setProducts(data);
+          setProducts(data as Product[]);
           const productTypes = new Set<string>();
-          data.forEach(p => { if (p.type) productTypes.add(p.type); });
+          (data as Product[]).forEach(p => { if (p.type) productTypes.add(p.type); });
           setCategories(['All', ...Array.from(productTypes)]);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching products:', error);
         toast({ title: "Error loading products", description: "Could not load products.", variant: "destructive" });
       } finally {
@@ -170,23 +180,21 @@ const ShopPage: React.FC = () => {
       if (shopTitleRef.current) gsap.killTweensOf(shopTitleRef.current);
       if (filtersRef.current) gsap.killTweensOf(filtersRef.current);
     };
-  }, [toast]); // Removed products and loading from here, as this effect is for initial load and static animations
+  }, [toast]);
 
   // Effect for GSAP animations on product cards, dependent on products and loading state
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion || loading || products.length === 0) {
-      // If motion is reduced, still loading, or no products, don't run animations
-      // or clean up existing ones if necessary (though GSAP might handle this if elements are removed)
       const productCards = document.querySelectorAll('.product-card-container');
-      if (productCards.length > 0) gsap.killTweensOf(productCards); // Clean up if cards were previously animated
+      if (productCards.length > 0) gsap.killTweensOf(productCards);
       return;
     }
 
     const setUpProductCardAnimations = () => {
       const productCards = document.querySelectorAll('.product-card-container');
       if (productCards.length > 0) {
-        gsap.killTweensOf(productCards); // Ensure any previous animations are stopped
+        gsap.killTweensOf(productCards); 
         gsap.fromTo(productCards, 
           { opacity: 0, y: 50 }, 
           {
@@ -204,15 +212,13 @@ const ShopPage: React.FC = () => {
         );
       }
     };
-    // Delay slightly to ensure DOM is ready for animations
     const timerId = setTimeout(setUpProductCardAnimations, 100);
     return () => {
       clearTimeout(timerId);
-      // It's good practice to kill tweens associated with elements that might be re-rendered or removed
       const productCards = document.querySelectorAll('.product-card-container');
       if (productCards.length > 0) gsap.killTweensOf(productCards);
     };
-  }, [loading, products]); // This effect now correctly depends on loading and products
+  }, [loading, products]);
 
   const filteredProducts = products
     .filter(product => 

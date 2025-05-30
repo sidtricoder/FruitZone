@@ -4,25 +4,46 @@ import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Package, ShoppingBag, Edit, Trash2, Search, 
-  CheckCircle, XCircle, Filter, Save, ImagePlus, RefreshCw
+  CheckCircle, XCircle, Filter, Save, ImagePlus, RefreshCw,
+  Percent, Info // Added Percent and Info icons
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-// Define needed types
+// Define NutrientInfo if not already available (e.g. from ShopPage or a global types file)
+interface NutrientInfo {
+  energy_kcal?: string;
+  carbohydrates_g?: string;
+  dietary_fiber_g?: string;
+  saturated_fat_g?: string;
+  protein_g?: string;
+  total_fat_g?: string;
+  [key: string]: string | undefined;
+}
+
+// Updated Product interface consistent with ShopPage.tsx
 interface Product {
   id: number;
   name: string;
-  description: string | null; // Assuming description can also be null based on typical DB schemas
-  price: number;
-  stock_quantity: number;
+  description: string | null;
+  price: number; // This is 'x', the discounted price set by admin
   image_url: string | string[]; 
+  type: string;
+  // New fields from Product interface update
+  brand?: string;
+  origin?: string;
+  bbe?: string; // Best Before End
+  delivery_info?: string; // Delivery information
+  discount_percentage?: number | null; // 'z', discount percentage
+  discount_reason?: string | null; // Reason for the discount
+  nutrient_info?: NutrientInfo | null; // Nutrient information object
+  // Existing fields from AdminPage
+  stock_quantity: number;
   created_at: string;
   updated_at: string;
-  b2b_price: number | null; // Corrected: Allow null
-  b2b_minimum_quantity: number | null; // Corrected: Allow null
-  is_b2b: boolean;
-  type: string;
+  b2b_price?: number | null; // Changed to optional and allow null
+  b2b_minimum_quantity?: number | null; // Changed to optional and allow null
+  is_b2b?: boolean; // Changed to optional
 }
 
 interface Order {
@@ -57,48 +78,74 @@ const AdminPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersState, setOrdersState] = useState<Order[]>([]); // Renamed orders to ordersState
   const [loading, setLoading] = useState({
     products: false,
     orders: false,
-    adminCheck: true
+    adminCheck: true,
+    discounts: false, // Added loading state for discounts
+    nutrients: false, // Added loading state for nutrients
   });
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [productTypeFilter, setProductTypeFilter] = useState('all');
-  const [orderSearchTerm, setOrderSearchTerm] = useState('');
-  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderSearchTermState, setOrderSearchTermState] = useState(''); // Defined orderSearchTermState
+  const [orderStatusFilterState, setOrderStatusFilterState] = useState('all'); // Defined orderStatusFilterState
   const [isAdmin, setIsAdmin] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
+  // State for managing nutrient info form for a selected product
+  const [editingNutrientsForProduct, setEditingNutrientsForProduct] = useState<Product | null>(null);
+  const [currentNutrientInfo, setCurrentNutrientInfo] = useState<NutrientInfo>({});
+
+  // State for managing discount form for a selected product
+  const [editingDiscountForProduct, setEditingDiscountForProduct] = useState<Product | null>(null);
+  const [currentDiscountPercentage, setCurrentDiscountPercentage] = useState<number | string>('');
+  const [currentDiscountReason, setCurrentDiscountReason] = useState<string>('');
+
+
   const initialNewProductState: Partial<Product> = {
     name: '',
     description: '',
     price: 0,
     stock_quantity: 0,
     image_url: [] as string[],
-    b2b_price: null, // Corrected: Initialize with null
-    b2b_minimum_quantity: 25, // Default or null
+    b2b_price: null,
+    b2b_minimum_quantity: 25,
     is_b2b: false,
     type: 'Fruits',
+    brand: '',
+    origin: '',
+    bbe: '',
+    delivery_info: '',
+    discount_percentage: null,
+    discount_reason: '',
+    nutrient_info: { // Define default keys for nutrient_info
+      energy_kcal: '',
+      carbohydrates_g: '',
+      dietary_fiber_g: '',
+      saturated_fat_g: '',
+      protein_g: '',
+      total_fat_g: '',
+    },
   };
   const [newProduct, setNewProduct] = useState<Partial<Product>>(initialNewProductState);
   
   const [currentImageUrl, setCurrentImageUrl] = useState('');
   
   const fetchProducts = useCallback(async () => {
-    setLoading(prev => ({...prev, products: true}));
+    setLoading(prev => ({...prev, products: true, discounts: true, nutrients: true})); // Also set discount/nutrient loading
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*') // Ensure all new fields are selected if they exist in DB
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
+      setProducts(data as Product[] || []); // Cast to Product[]
+    } catch (error: any) {
       console.error('Error fetching products:', error);
       toast({ title: "Error fetching products", description: "There was an error loading products.", variant: "destructive" });
     } finally {
-      setLoading(prev => ({...prev, products: false}));
+      setLoading(prev => ({...prev, products: false, discounts: false, nutrients: false}));
     }
   }, [toast]);
 
@@ -141,7 +188,7 @@ const AdminPage: React.FC = () => {
           return { ...order, items: [], user_details: undefined };
         }
       }));
-      setOrders(completeOrders);
+      setOrdersState(completeOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({ title: "Error fetching orders", description: "There was an error loading orders.", variant: "destructive" });
@@ -242,15 +289,15 @@ const AdminPage: React.FC = () => {
   
   const filteredProducts = products.filter(product => 
     (product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase())) &&
+    (product.description || '').toLowerCase().includes(productSearchTerm.toLowerCase())) &&
     (productTypeFilter === 'all' || product.type === productTypeFilter)
   );
 
-  const filteredOrders = orders.filter(order =>
-    (order.user_details?.full_name?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
-    order.user_details?.mobile_number?.includes(orderSearchTerm) ||
-    order.id.toString().includes(orderSearchTerm)) &&
-    (orderStatusFilter === 'all' || order.status === orderStatusFilter)
+  const filteredOrdersState = ordersState.filter(order => // Defined filteredOrdersState using ordersState
+    (order.user_details?.full_name?.toLowerCase().includes(orderSearchTermState.toLowerCase()) ||
+    order.user_details?.mobile_number?.includes(orderSearchTermState) ||
+    order.id.toString().includes(orderSearchTermState)) &&
+    (orderStatusFilterState === 'all' || order.status === orderStatusFilterState)
   );
 
   const handleSaveProduct = async () => {
@@ -276,11 +323,17 @@ const AdminPage: React.FC = () => {
         description: newProduct.description,
         price: newProduct.price,
         stock_quantity: newProduct.stock_quantity,
-        image_url: newProduct.image_url, // Supabase can handle array of strings if column type is text[] or jsonb
+        image_url: newProduct.image_url,
         b2b_price: newProduct.b2b_price,
         b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
         is_b2b: newProduct.is_b2b,
         type: newProduct.type,
+        brand: newProduct.brand,
+        origin: newProduct.origin,
+        bbe: newProduct.bbe,
+        delivery_info: newProduct.delivery_info,
+        // discount_percentage and discount_reason are managed in their own section
+        // nutrient_info is managed in its own section
         updated_at: new Date(),
       };
 
@@ -289,7 +342,15 @@ const AdminPage: React.FC = () => {
         if (error) throw error;
         toast({ title: "Product updated", description: `${newProduct.name} updated.` });
       } else {
-        const { error } = await supabase.from('products').insert([productData]).select();
+        // For new products, ensure discount and nutrient fields are initialized if needed, or handled post-creation
+        const finalProductData = {
+            ...productData,
+            discount_percentage: newProduct.discount_percentage || null,
+            discount_reason: newProduct.discount_reason || null,
+            nutrient_info: newProduct.nutrient_info || {},
+            created_at: new Date(), // Also add created_at for new products
+        };
+        const { error } = await supabase.from('products').insert([finalProductData]).select();
         if (error) throw error;
         toast({ title: "Product created", description: `${newProduct.name} created.` });
       }
@@ -297,9 +358,9 @@ const AdminPage: React.FC = () => {
       setNewProduct(initialNewProductState);
       setCurrentImageUrl('');
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      toast({ title: "Error saving product", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Error saving product", description: error.message || "Please try again.", variant: "destructive" });
     }
   };
 
@@ -311,10 +372,17 @@ const AdminPage: React.FC = () => {
       price: product.price,
       stock_quantity: product.stock_quantity,
       image_url: product.image_url,
-      b2b_price: product.b2b_price, // Corrected: direct assignment
-      b2b_minimum_quantity: product.b2b_minimum_quantity, // Corrected: direct assignment
+      b2b_price: product.b2b_price,
+      b2b_minimum_quantity: product.b2b_minimum_quantity,
       is_b2b: product.is_b2b,
       type: product.type,
+      brand: product.brand,
+      origin: product.origin,
+      bbe: product.bbe,
+      delivery_info: product.delivery_info,
+      // discount_percentage, discount_reason, and nutrient_info are handled separately
+      // So, we don't load them into the main product form here to avoid confusion.
+      // They will be displayed in the product list and editable via their dedicated forms.
     });
   };
 
@@ -331,7 +399,7 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: number, status: string) => {
+  const handleUpdateOrderStatusState = async (orderId: number, status: string) => { // Defined handleUpdateOrderStatusState
     try {
       const { error } = await supabase.from('orders').update({ status, updated_at: new Date() }).eq('id', orderId);
       if (error) throw error;
@@ -343,6 +411,78 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  // Handle saving nutrient information
+  const handleSaveNutrientInfo = async () => {
+    if (!editingNutrientsForProduct) return;
+    setLoading(prev => ({...prev, nutrients: true}));
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ nutrient_info: currentNutrientInfo, updated_at: new Date() })
+        .eq('id', editingNutrientsForProduct.id);
+      if (error) throw error;
+      toast({ title: "Nutrient Info Saved", description: `Nutrients for ${editingNutrientsForProduct.name} updated.` });
+      setEditingNutrientsForProduct(null);
+      setCurrentNutrientInfo({});
+      fetchProducts(); // Refresh product list
+    } catch (error: any) {
+      console.error('Error saving nutrient info:', error);
+      toast({ title: "Error Saving Nutrients", description: error.message || "Could not save nutrient information.", variant: "destructive" });
+    } finally {
+      setLoading(prev => ({...prev, nutrients: false}));
+    }
+  };
+
+  // Handle opening nutrient edit modal/form
+  const handleEditNutrients = (product: Product) => {
+    setEditingNutrientsForProduct(product);
+    // Ensure all default nutrient keys are present when initializing currentNutrientInfo
+    const defaultNutrientKeys = initialNewProductState.nutrient_info || {};
+    const existingNutrientInfo = product.nutrient_info || {};
+    const mergedNutrientInfo = { ...defaultNutrientKeys, ...existingNutrientInfo };
+    setCurrentNutrientInfo(mergedNutrientInfo);
+  };
+
+  // Handle saving discount information
+  const handleSaveDiscountInfo = async () => {
+    if (!editingDiscountForProduct) return;
+    setLoading(prev => ({...prev, discounts: true}));
+    try {
+      const percentage = parseFloat(currentDiscountPercentage as string);
+      if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+        toast({ title: "Invalid Discount", description: "Percentage must be between 0 and 100.", variant: "destructive" });
+        setLoading(prev => ({...prev, discounts: false}));
+        return;
+      }
+      const { error } = await supabase
+        .from('products')
+        .update({
+          discount_percentage: percentage,
+          discount_reason: currentDiscountReason,
+          updated_at: new Date()
+        })
+        .eq('id', editingDiscountForProduct.id);
+      if (error) throw error;
+      toast({ title: "Discount Info Saved", description: `Discount for ${editingDiscountForProduct.name} updated.` });
+      setEditingDiscountForProduct(null);
+      setCurrentDiscountPercentage('');
+      setCurrentDiscountReason('');
+      fetchProducts(); // Refresh product list
+    } catch (error: any) {
+      console.error('Error saving discount info:', error);
+      toast({ title: "Error Saving Discount", description: error.message || "Could not save discount information.", variant: "destructive" });
+    } finally {
+      setLoading(prev => ({...prev, discounts: false}));
+    }
+  };
+
+  // Handle opening discount edit modal/form
+  const handleEditDiscount = (product: Product) => {
+    setEditingDiscountForProduct(product);
+    setCurrentDiscountPercentage(product.discount_percentage?.toString() || '');
+    setCurrentDiscountReason(product.discount_reason || '');
+  };
+
   if (loading.adminCheck) {
     return <div className="flex items-center justify-center min-h-screen bg-background"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div><p className="ml-4 text-lg text-muted-foreground">Verifying access...</p></div>;
   }
@@ -351,20 +491,23 @@ const AdminPage: React.FC = () => {
   }
   
   const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
-  const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled'];
+  // const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled']; // Commented out as orderStatuses is unused
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pt-20 md:pt-24">
       <header className="mb-8"><h1 className="text-3xl md:text-4xl font-bold text-primary text-center">Admin Dashboard</h1></header>
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-2 mb-6 bg-card shadow-sm">
-          <TabsTrigger value="products" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Package className="w-5 h-5 mr-2" /> Manage Products</TabsTrigger>
-          <TabsTrigger value="orders" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ShoppingBag className="w-5 h-5 mr-2" /> Manage Orders</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6 bg-card shadow-sm">
+          <TabsTrigger value="products" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Package className="w-5 h-5 mr-2" /> Products</TabsTrigger>
+          <TabsTrigger value="orders" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ShoppingBag className="w-5 h-5 mr-2" /> Orders</TabsTrigger>
+          <TabsTrigger value="discounts" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Percent className="w-5 h-5 mr-2" /> Discounts</TabsTrigger>
+          <TabsTrigger value="nutrients" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Info className="w-5 h-5 mr-2" /> Nutrients</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
           <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold text-primary mb-6">Product Management</h2>
+            {/* Product Add/Edit Form - MODIFIED to include new fields */}
             <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
               <h3 className="text-xl font-semibold text-foreground mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
               <form onSubmit={(e) => { e.preventDefault(); handleSaveProduct(); }} className="space-y-4">
@@ -397,6 +540,31 @@ const AdminPage: React.FC = () => {
                     <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
                   </div>
                 </div>
+
+                {/* Brand and Origin */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="productBrand" className="block text-sm font-medium mb-1 text-foreground">Brand</label>
+                    <input id="productBrand" type="text" placeholder="e.g., FarmFresh" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.brand || ''} onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})} />
+                  </div>
+                  <div>
+                    <label htmlFor="productOrigin" className="block text-sm font-medium mb-1 text-foreground">Origin</label>
+                    <input id="productOrigin" type="text" placeholder="e.g., Local Farms, India" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.origin || ''} onChange={(e) => setNewProduct({...newProduct, origin: e.target.value})} />
+                  </div>
+                </div>
+
+                {/* BBE and Delivery Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="productBBE" className="block text-sm font-medium mb-1 text-foreground">Best Before End (BBE)</label>
+                    <input id="productBBE" type="text" placeholder="e.g., 3 months, DD/MM/YYYY" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.bbe || ''} onChange={(e) => setNewProduct({...newProduct, bbe: e.target.value})} />
+                  </div>
+                  <div>
+                    <label htmlFor="productDeliveryInfo" className="block text-sm font-medium mb-1 text-foreground">Delivery Information</label>
+                    <input id="productDeliveryInfo" type="text" placeholder="e.g., Ships in 2-3 days" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.delivery_info || ''} onChange={(e) => setNewProduct({...newProduct, delivery_info: e.target.value})} />
+                  </div>
+                </div>
+                
                 {/* Image URL Management */}
                 <div>
                   <label className="block text-sm font-medium mb-1 text-foreground">Product Images *</label>
@@ -439,7 +607,7 @@ const AdminPage: React.FC = () => {
                 </div>
               </form>
             </div>
-            {/* Product List */}
+            {/* Product List - MODIFIED to show new fields and add edit buttons for nutrients/discounts */}
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-grow w-full md:w-auto">
                 <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
@@ -454,41 +622,44 @@ const AdminPage: React.FC = () => {
               </div>
               <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
             </div>
-            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+            {loading.products ? (
+              <div className="flex justify-center items-center py-10">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+                <p className="ml-3 text-muted-foreground">Loading products...</p>
+              </div>
+            ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="min-w-full divide-y divide-border bg-card">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Image</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price (₹)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">B2B</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Updated</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Image</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name/Brand</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type/Origin</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price (₹)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Discount (%)</th>
+                      {/* <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nutrients</th> Removed for brevity, manage in new tab */}
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredProducts.length > 0 ? filteredProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <img src={getDisplayImageUrl(product.image_url, product.type)} alt={product.name} className="w-16 h-16 object-contain rounded-md bg-white border border-border p-0.5" onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { const target = e.target as HTMLImageElement; target.src = getDisplayImageUrl(null, product.type); target.onerror = null; }} />
+                        <td className="px-3 py-2">
+                          <img src={getDisplayImageUrl(product.image_url, product.type)} alt={product.name} className="w-12 h-12 object-contain rounded-md bg-white border border-border p-0.5" onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { const target = e.target as HTMLImageElement; target.src = getDisplayImageUrl(null, product.type); target.onerror = null; }} />
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm font-medium text-foreground truncate max-w-xs" title={product.name}>{product.name}</div><div className="text-xs text-muted-foreground truncate max-w-xs" title={product.description || undefined}>{product.description || "-"}</div></td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">{product.price.toFixed(2)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          {product.is_b2b ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{new Date(product.updated_at).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                          <button onClick={() => handleEditProduct(product)} className="text-amber-600 hover:text-amber-700 mr-3 p-1" title="Edit Product"><Edit size={18}/></button>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-700 p-1" title="Delete Product"><Trash2 size={18}/></button>
+                        <td className="px-3 py-2 whitespace-nowrap"><div className="text-sm font-medium text-foreground truncate max-w-[200px]" title={product.name}>{product.name}</div><div className="text-xs text-muted-foreground">{product.brand || 'N/A'}</div></td>
+                        <td className="px-3 py-2 whitespace-nowrap"><div className="text-sm text-muted-foreground">{product.type}</div><div className="text-xs text-muted-foreground">{product.origin || 'N/A'}</div></td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-foreground">{product.price.toFixed(2)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium space-x-1">
+                          <button onClick={() => handleEditProduct(product)} className="text-amber-600 hover:text-amber-700 p-1" title="Edit Base Product Info"><Edit size={16}/></button>
+                          <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-700 p-1" title="Delete Product"><Trash2 size={16}/></button>
+                          {/* Buttons to open nutrient/discount modals could be added here or in respective tabs */}
                         </td>
                       </tr>
-                    )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No products found.</td></tr>)}
+                    )) : (<tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No products found.</td></tr>)}
                   </tbody>
                 </table>
               </div>
@@ -501,12 +672,12 @@ const AdminPage: React.FC = () => {
             <h2 className="text-2xl font-semibold text-primary mb-6">Order Management</h2>
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-grow w-full md:w-auto">
-                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTermState} onChange={(e) => setOrderSearchTermState(e.target.value)} /> {/* Renamed orderSearchTerm to orderSearchTermState */}
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="relative flex-grow w-full md:w-auto">
-                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
-                        {orderStatuses.map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))}
+                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilterState} onChange={(e) => setOrderStatusFilterState(e.target.value)}> {/* Renamed orderStatusFilter to orderStatusFilterState */}
+                        {['all', 'pending', 'processing', 'delivered', 'cancelled'].map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))} {/* Used array directly */}
                     </select>
                     <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
@@ -528,7 +699,7 @@ const AdminPage: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                        {filteredOrdersState.length > 0 ? filteredOrdersState.map((order: Order) => (
                         <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary">#{order.id}</td>
                             <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm text-foreground">{order.user_details?.full_name || 'N/A'}</div><div className="text-xs text-muted-foreground">{order.user_details?.mobile_number || order.user_id}</div></td>
@@ -537,7 +708,7 @@ const AdminPage: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'processing' ? 'bg-blue-100 text-blue-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{order.status}</span></td>
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800' }`}>{order.payment_status}</span></td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{order.items.length} item(s) <ul className="text-xs list-disc list-inside">{order.items.slice(0,2).map(item => ( <li key={item.id} className="truncate max-w-[150px]" title={item.product_name}>{item.quantity}x {item.product_name}</li>))}{order.items.length > 2 && <li>...and {order.items.length - 2} more</li>}</ul></td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatusState(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td> {/* Renamed handleUpdateOrderStatus to handleUpdateOrderStatusState */}
                         </tr>
                         )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No orders found.</td></tr>)}
                     </tbody>
@@ -546,6 +717,150 @@ const AdminPage: React.FC = () => {
             )}
           </div>
         </TabsContent>
+
+        {/* NEW TAB: Manage Discounts */}
+        <TabsContent value="discounts">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Manage Product Discounts</h2>
+            {editingDiscountForProduct ? (
+              <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
+                <h3 className="text-xl font-semibold text-foreground mb-4">Edit Discount for: <span className="text-amber-600">{editingDiscountForProduct.name}</span></h3>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveDiscountInfo(); }} className="space-y-4">
+                  <div>
+                    <label htmlFor="discountPercentage" className="block text-sm font-medium mb-1 text-foreground">Discount Percentage (%) *</label>
+                    <input id="discountPercentage" type="number" placeholder="e.g., 10 for 10%" min="0" max="100" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountPercentage} onChange={(e) => setCurrentDiscountPercentage(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label htmlFor="discountReason" className="block text-sm font-medium mb-1 text-foreground">Discount Reason (Optional)</label>
+                    <input id="discountReason" type="text" placeholder="e.g., Seasonal Sale, Clearance" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountReason} onChange={(e) => setCurrentDiscountReason(e.target.value)} />
+                  </div>
+                  <div className="flex items-center justify-end space-x-3 pt-4">
+                    <button type="button" onClick={() => { setEditingDiscountForProduct(null); setCurrentDiscountPercentage(''); setCurrentDiscountReason(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel</button>
+                    <button type="submit" disabled={loading.discounts} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.discounts ? 'Saving...' : 'Save Discount'} </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mb-4">Select a product from the list below to manage its discount.</p>
+            )}
+            {/* Product List for Discount Management */}
+            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product Name</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Price (₹)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Discount (%)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {products.length > 0 ? products.map((product) => (
+                      <tr key={product.id} className={`hover:bg-muted/30 transition-colors ${editingDiscountForProduct?.id === product.id ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-foreground">{product.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.price.toFixed(2)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground truncate max-w-[200px]" title={product.discount_reason || undefined}>{product.discount_reason || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => handleEditDiscount(product)} className="text-amber-600 hover:text-amber-700 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Discount </button>
+                        </td>
+                      </tr>
+                    )) : (<tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* NEW TAB: Manage Nutrients */}
+        <TabsContent value="nutrients">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Manage Product Nutrient Information</h2>
+            {editingNutrientsForProduct ? (
+              <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
+                <h3 className="text-xl font-semibold text-foreground mb-4">Edit Nutrients for: <span className="text-amber-600">{editingNutrientsForProduct.name}</span></h3>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveNutrientInfo(); }} className="space-y-4">
+                  {/* Always render fields based on currentNutrientInfo, which is initialized with defaults by handleEditNutrients */}
+                  {(Object.keys(currentNutrientInfo) as Array<keyof NutrientInfo>).map(key => (
+                     <div key={key}>
+                       <label htmlFor={`nutrient_${key}`} className="block text-sm font-medium mb-1 text-foreground capitalize">{String(key).replace(/_/g, ' ')}</label>
+                       <input
+                         id={`nutrient_${key}`}
+                         type="text"
+                         placeholder={`Value for ${String(key).replace(/_/g, ' ')}`}
+                         className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground"
+                         value={currentNutrientInfo[key] || ''}
+                         onChange={(e) => setCurrentNutrientInfo(prev => ({...prev, [key]: e.target.value}))} />
+                     </div>
+                  ))}
+
+                  {/* The following section for "Add/Update Nutrient Fields" is redundant
+                      because currentNutrientInfo is initialized with all predefined keys from
+                      initialNewProductState.nutrient_info through the handleEditNutrients function.
+                      The loop above now handles displaying all necessary fields.
+                  */}
+                  {/*
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-md font-semibold text-foreground mb-2">Add/Update Nutrient Fields</h4>
+                    {Object.keys(initialNewProductState.nutrient_info || {}).map(key => (
+                      <div key={`new_nutrient_${key}`} className="mb-2">
+                        <label htmlFor={`new_nutrient_input_${key}`} className="block text-sm font-medium mb-1 text-foreground capitalize">{String(key).replace(/_/g, ' ')}</label>
+                        <input
+                          id={`new_nutrient_input_${key}`}
+                          type="text"
+                          placeholder={`Enter ${String(key).replace(/_/g, ' ')}`}
+                          className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground"
+                          value={currentNutrientInfo[key as keyof NutrientInfo] || ''}
+                          onChange={(e) => setCurrentNutrientInfo(prev => ({...prev, [key]: e.target.value}))} />
+                      </div>
+                    ))}
+                  </div>
+                  */}
+
+                  <div className="flex items-center justify-end space-x-3 pt-4">
+                    <button type="button" onClick={() => { setEditingNutrientsForProduct(null); setCurrentNutrientInfo({}); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel</button>
+                    <button type="submit" disabled={loading.nutrients} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.nutrients ? 'Saving...' : 'Save Nutrients'} </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mb-4">Select a product from the list below to manage its nutrient information.</p>
+            )}
+            {/* Product List for Nutrient Management */}
+            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product Name</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nutrients Set?</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {products.length > 0 ? products.map((product) => (
+                      <tr key={product.id} className={`hover:bg-muted/30 transition-colors ${editingNutrientsForProduct?.id === product.id ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-foreground">{product.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">
+                          {product.nutrient_info && Object.values(product.nutrient_info).some(val => val && val.trim() !== '') 
+                            ? <CheckCircle className="w-5 h-5 text-green-500" /> 
+                            : <XCircle className="w-5 h-5 text-red-500" />}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => handleEditNutrients(product)} className="text-amber-600 hover:text-amber-700 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Nutrients </button>
+                        </td>
+                      </tr>
+                    )) : (<tr><td colSpan={3} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
