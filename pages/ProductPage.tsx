@@ -136,7 +136,7 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
                     variant: "default"
                   });
                 }}
-                className="text-xs bg-lime-500 hover:bg-lime-600 text-white py-1 px-2 rounded flex items-center"
+                className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground py-1 px-2 rounded flex items-center"
               >
                 <ShoppingBag size={12} className="mr-1" /> Add
               </button>
@@ -145,7 +145,7 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
                   e.stopPropagation();
                   navigate(`/products/${product.id}`);
                 }}
-                className="text-xs border border-primary text-primary hover:bg-primary hover:text-white py-1 px-2 rounded flex items-center"
+                className="text-xs border border-primary text-primary hover:bg-primary hover:text-primary-foreground py-1 px-2 rounded flex items-center"
               >
                  View Details
               </button>
@@ -288,7 +288,7 @@ const ProductPage: React.FC = () => {
             <p className="mb-8">The product you're looking for doesn't exist or has been removed.</p>
             <button 
               onClick={() => navigate('/shop')}
-              className="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/90"
+              className="inline-flex items-center px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Shop
             </button>
@@ -414,7 +414,7 @@ const ProductPage: React.FC = () => {
               </div>
               {discountPercentageZ > 0 && discountPercentageZ < 100 && (
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs sm:text-sm font-semibold text-green-700 bg-green-100 dark:bg-green-700 dark:text-green-100 px-2.5 py-1 rounded-full">
+                  <span className="text-xs sm:text-sm font-semibold text-green-700 bg-green-100 dark:text-green-100 dark:bg-green-700 px-2.5 py-1 rounded-full">
                     {discountPercentageZ}% OFF
                   </span>
                   {product.discount_reason && (
@@ -472,37 +472,44 @@ const ProductPage: React.FC = () => {
             )}
 
 
-            {/* Product Description */}
-            {product.description && (
-              <div className="mt-6 border-t border-border pt-5">
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2 sm:mb-3">Product Description</h3>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground space-y-2 sm:space-y-3">
-                  {product.description.split('\\n').map((paragraph, index) => (
-                    <p key={index}>{paragraph.trim()}</p>
-                  ))}
-                </div>
+            {/* Product Description and Nutrient Information Container */}
+            <div className="mt-6 border-t border-border pt-6 grid grid-cols-1 lg:grid-cols-3 gap-x-8 gap-y-6">
+              {/* Left Column: Product Description */}
+              <div className="lg:col-span-2">
+                {product.description && (
+                  <div> {/* Removed original mt-6 border-t pt-5 wrapper */}
+                    <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2 sm:mb-3">Product Description</h3>
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground space-y-2 sm:space-y-3">
+                      {product.description.split('\\\\n').map((paragraph, index) => (
+                        <p key={index}>{paragraph.trim()}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
 
-            {/* Nutrient Information */}
-            {hasNutrientInfo && (
-              <div className="mt-6 border-t border-border pt-5">
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Nutritional Information</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 sm:gap-x-6 gap-y-2 text-sm">
-                  {Object.entries(product.nutrient_info!) // Added non-null assertion as hasNutrientInfo already checks for null/undefined
-                    .filter(([_, value]) => value != null && String(value).trim() !== '') 
-                    .map(([key, value]) => {
-                      const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).replace(/ Kcal$/, " (kcal)").replace(/ G$/, " (g)");
-                      return (
-                        <div key={key} className="flex justify-between py-1 border-b border-border/30 last:border-b-0 sm:py-1.5">
-                          <span className="text-muted-foreground">{formattedKey}:</span>
-                          <span className="font-medium text-foreground">{String(value)}</span>
-                        </div>
-                      );
-                  })}
-                </div>
+              {/* Right Column: Nutrient Information */}
+              <div className="lg:col-span-1">
+                {hasNutrientInfo && (
+                  <div> {/* Removed original mt-6 border-t pt-5 wrapper */}
+                    <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Nutritional Information</h3>
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm"> {/* Changed from sm:grid-cols-2 to grid-cols-1 for better fit */}
+                      {Object.entries(product.nutrient_info!) 
+                        .filter(([_, value]) => value != null && String(value).trim() !== '') 
+                        .map(([key, value]) => {
+                          const formattedKey = key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()).replace(/ Kcal$/, " (kcal)").replace(/ G$/, " (g)");
+                          return (
+                            <div key={key} className="flex justify-between py-1 border-b border-border/30 last:border-b-0 sm:py-1.5">
+                              <span className="text-muted-foreground">{formattedKey}:</span>
+                              <span className="font-medium text-foreground">{String(value)}</span>
+                            </div>
+                          );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Reviews Section */}
             <div className="mt-10 border-t border-border pt-8">

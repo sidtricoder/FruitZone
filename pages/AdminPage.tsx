@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button'; // Added Button import
 import { 
   Package, ShoppingBag, Edit, Trash2, Search, 
-  CheckCircle, XCircle, Filter, Save, ImagePlus, RefreshCw,
-  Percent, Info // Added Percent and Info icons
+  CheckCircle, XCircle, Filter, Save, RefreshCw,
+  Percent, Info, PlusCircle, X // Added PlusCircle and X icons
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,7 +57,7 @@ interface Order {
   shipping_address: string;
   payment_status: 'pending' | 'paid' | 'failed';
   items: OrderItem[];
-  user_details?: {
+  user_details?: { // Made user_details optional as it might not always be present
     full_name: string;
     mobile_number: string;
   };
@@ -102,6 +103,7 @@ const AdminPage: React.FC = () => {
   const [currentDiscountPercentage, setCurrentDiscountPercentage] = useState<number | string>('');
   const [currentDiscountReason, setCurrentDiscountReason] = useState<string>('');
 
+  const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
 
   const initialNewProductState: Partial<Product> = {
     name: '',
@@ -131,7 +133,9 @@ const AdminPage: React.FC = () => {
   const [newProduct, setNewProduct] = useState<Partial<Product>>(initialNewProductState);
   
   const [currentImageUrl, setCurrentImageUrl] = useState('');
-  
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); 
+
+  // Fetch products from Supabase
   const fetchProducts = useCallback(async () => {
     setLoading(prev => ({...prev, products: true, discounts: true, nutrients: true})); // Also set discount/nutrient loading
     try {
@@ -149,6 +153,7 @@ const AdminPage: React.FC = () => {
     }
   }, [toast]);
 
+  // Fetch orders from Supabase
   const fetchOrders = useCallback(async () => {
     setLoading(prev => ({...prev, orders: true}));
     try {
@@ -197,6 +202,7 @@ const AdminPage: React.FC = () => {
     }
   }, [toast]);
 
+  // Check admin status on mount
   useEffect(() => {
     let isMounted = true;
     setLoading(prev => ({...prev, adminCheck: true}));
@@ -273,18 +279,26 @@ const AdminPage: React.FC = () => {
         toast({ title: "Invalid Image URL", description: "URL must end with valid extension.", variant: "destructive" });
         return;
       }
-      const currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+      let currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+      // If editing, newProduct.image_url might be a string if only one image was previously saved.
+      if (typeof newProduct.image_url === 'string' && newProduct.image_url.trim() !== '') {
+        currentImages = [newProduct.image_url];
+      }
+      
       setNewProduct(prev => ({ ...prev, image_url: [...currentImages, currentImageUrl.trim()] }));
       setCurrentImageUrl('');
+      setImagePreviewUrl(null); // Clear preview after adding
     }
   };
 
   // Handle removing an image URL
   const handleRemoveImageUrl = (idx: number) => {
-    if (Array.isArray(newProduct.image_url)) {
-      const updatedImageUrls = newProduct.image_url.filter((_, i) => i !== idx);
-      setNewProduct(prev => ({ ...prev, image_url: updatedImageUrls }));
+    let currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+    if (typeof newProduct.image_url === 'string') {
+        currentImages = [newProduct.image_url];
     }
+    const updatedImageUrls = currentImages.filter((_, i) => i !== idx);
+    setNewProduct(prev => ({ ...prev, image_url: updatedImageUrls.length > 0 ? updatedImageUrls : [] }));
   };
   
   const filteredProducts = products.filter(product => 
@@ -338,8 +352,11 @@ const AdminPage: React.FC = () => {
       };
 
       if (editingProduct) {
-        const { error } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
-        if (error) throw error;
+        // When updating, ensure all fields are correctly passed, including potentially unchanged ones like discount/nutrients
+        // if they are not meant to be reset by this specific save action.
+        // However, the current logic separates these concerns, so productData is fine as is.
+        const { data: _updateData, error: updateError } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
+        if (updateError) throw updateError;
         toast({ title: "Product updated", description: `${newProduct.name} updated.` });
       } else {
         // For new products, ensure discount and nutrient fields are initialized if needed, or handled post-creation
@@ -347,16 +364,18 @@ const AdminPage: React.FC = () => {
             ...productData,
             discount_percentage: newProduct.discount_percentage || null,
             discount_reason: newProduct.discount_reason || null,
-            nutrient_info: newProduct.nutrient_info || {},
+            // Ensure nutrient_info is an object, even if empty, not null
+            nutrient_info: newProduct.nutrient_info && Object.keys(newProduct.nutrient_info).length > 0 ? newProduct.nutrient_info : {},
             created_at: new Date(), // Also add created_at for new products
         };
-        const { error } = await supabase.from('products').insert([finalProductData]).select();
-        if (error) throw error;
+        const { data: _insertData, error: insertError } = await supabase.from('products').insert([finalProductData]).select();
+        if (insertError) throw insertError;
         toast({ title: "Product created", description: `${newProduct.name} created.` });
       }
       setEditingProduct(null);
       setNewProduct(initialNewProductState);
       setCurrentImageUrl('');
+      setImagePreviewUrl(null); // Clear preview on cancel/save
       fetchProducts();
     } catch (error: any) {
       console.error('Error saving product:', error);
@@ -371,7 +390,8 @@ const AdminPage: React.FC = () => {
       description: product.description,
       price: product.price,
       stock_quantity: product.stock_quantity,
-      image_url: product.image_url,
+      // Ensure image_url is always an array for consistency in the form
+      image_url: Array.isArray(product.image_url) ? product.image_url : (product.image_url ? [product.image_url] : []),
       b2b_price: product.b2b_price,
       b2b_minimum_quantity: product.b2b_minimum_quantity,
       is_b2b: product.is_b2b,
@@ -384,6 +404,8 @@ const AdminPage: React.FC = () => {
       // So, we don't load them into the main product form here to avoid confusion.
       // They will be displayed in the product list and editable via their dedicated forms.
     });
+    setCurrentImageUrl(''); // Clear the input field for new image URLs
+    setImagePreviewUrl(null); // Clear the preview for the new image URL input
   };
 
   const handleDeleteProduct = async (productId: number) => {
@@ -483,14 +505,20 @@ const AdminPage: React.FC = () => {
     setCurrentDiscountReason(product.discount_reason || '');
   };
 
-  if (loading.adminCheck) {
-    return <div className="flex items-center justify-center min-h-screen bg-background"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div><p className="ml-4 text-lg text-muted-foreground">Verifying access...</p></div>;
-  }
+  // Effect to update image preview when currentImageUrl changes
+  useEffect(() => {
+    if (currentImageUrl && (/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(currentImageUrl))) {
+      setImagePreviewUrl(currentImageUrl);
+    } else {
+      setImagePreviewUrl(null);
+    }
+  }, [currentImageUrl]);
+
   if (!isAdmin) {
     return <div className="flex items-center justify-center min-h-screen bg-background"><p className="text-lg text-destructive">Access Denied. Redirecting...</p></div>;
   }
   
-  const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
+  // const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other']; // Moved to component scope
   // const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled']; // Commented out as orderStatuses is unused
 
   return (
@@ -515,41 +543,108 @@ const AdminPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productName" className="block text-sm font-medium mb-1 text-foreground">Product Name *</label>
-                    <input id="productName" type="text" placeholder="e.g., Organic Apples" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required />
+                    <input id="productName" type="text" placeholder="e.g., Organic Apples" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required />
                   </div>
                   <div>
                     <label htmlFor="productType" className="block text-sm font-medium mb-1 text-foreground">Product Type *</label>
-                    <select id="productType" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground" value={newProduct.type} onChange={(e) => setNewProduct({...newProduct, type: e.target.value})} required>
-                      {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                    <select id="productType" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground" value={newProduct.type} onChange={(e) => setNewProduct({...newProduct, type: e.target.value})} required>
+                      {productTypes.map((type: string) => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                 </div>
                 {/* Description */}
                 <div>
                   <label htmlFor="productDescription" className="block text-sm font-medium mb-1 text-foreground">Description</label>
-                  <textarea id="productDescription" placeholder="Detailed product description" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" rows={3} value={newProduct.description || ''} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}></textarea>
+                  <textarea id="productDescription" placeholder="Detailed product description" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" rows={3} value={newProduct.description || ''} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}></textarea>
                 </div>
                 {/* Price and Stock */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productPrice" className="block text-sm font-medium mb-1 text-foreground">Price (₹) *</label>
-                    <input id="productPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.price ?? ''} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} required />
+                    <input id="productPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.price ?? ''} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} required />
                   </div>
                   <div>
                     <label htmlFor="productStock" className="block text-sm font-medium mb-1 text-foreground">Stock Quantity</label>
-                    <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
+                    <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
                   </div>
+                </div>
+
+                {/* Image URL Management Section */}
+                <div>
+                  <label htmlFor="currentImageUrl" className="block text-sm font-medium mb-1 text-foreground">Product Image URL(s)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="currentImageUrl"
+                      type="url"
+                      placeholder="Enter image URL and click Add"
+                      className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground"
+                      value={currentImageUrl}
+                      onChange={(e) => setCurrentImageUrl(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(); }}}
+                    />
+                    <Button type="button" onClick={handleAddImageUrl} variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0">
+                      <PlusCircle className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Add</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Image Preview and Management Panel */}
+                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20 min-h-[120px] flex flex-col justify-center">
+                  {imagePreviewUrl && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-foreground mb-1">New image preview:</p>
+                      <img 
+                        src={imagePreviewUrl} 
+                        alt="New image preview" 
+                        className="max-w-xs h-auto rounded-md border border-border shadow-sm" 
+                        style={{ maxHeight: '100px' }} 
+                        onError={(e) => (e.currentTarget.src = '/static/images/image-placeholder.png')}
+                      />
+                    </div>
+                  )}
+
+                  {Array.isArray(newProduct.image_url) && newProduct.image_url.length > 0 && (
+                    <div className={imagePreviewUrl ? "mt-4 pt-4 border-t border-border" : ""}>
+                      <h4 className="text-md font-semibold text-foreground mb-3">Current Product Images:</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {(newProduct.image_url as string[]).map((url, index) => (
+                          <div key={index} className="relative group aspect-square">
+                            <img
+                              src={url}
+                              alt={`Product image ${index + 1}`}
+                              className="w-full h-full object-cover rounded-md border border-border shadow-sm"
+                              onError={(e) => (e.currentTarget.src = '/static/images/image-placeholder.png')}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => handleRemoveImageUrl(index)}
+                              variant="destructive"
+                              size="icon" 
+                              className="absolute top-1 right-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                              aria-label="Remove image"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!imagePreviewUrl && (!Array.isArray(newProduct.image_url) || newProduct.image_url.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center">Image preview and added images will appear here.</p>
+                  )}
                 </div>
 
                 {/* Brand and Origin */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productBrand" className="block text-sm font-medium mb-1 text-foreground">Brand</label>
-                    <input id="productBrand" type="text" placeholder="e.g., FarmFresh" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.brand || ''} onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})} />
+                    <input id="productBrand" type="text" placeholder="e.g., FarmFresh" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.brand || ''} onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})} />
                   </div>
                   <div>
                     <label htmlFor="productOrigin" className="block text-sm font-medium mb-1 text-foreground">Origin</label>
-                    <input id="productOrigin" type="text" placeholder="e.g., Local Farms, India" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.origin || ''} onChange={(e) => setNewProduct({...newProduct, origin: e.target.value})} />
+                    <input id="productOrigin" type="text" placeholder="e.g., Local Farms, India" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.origin || ''} onChange={(e) => setNewProduct({...newProduct, origin: e.target.value})} />
                   </div>
                 </div>
 
@@ -557,42 +652,25 @@ const AdminPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productBBE" className="block text-sm font-medium mb-1 text-foreground">Best Before End (BBE)</label>
-                    <input id="productBBE" type="text" placeholder="e.g., 3 months, DD/MM/YYYY" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.bbe || ''} onChange={(e) => setNewProduct({...newProduct, bbe: e.target.value})} />
+                    <input id="productBBE" type="text" placeholder="e.g., 3 months, DD/MM/YYYY" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.bbe || ''} onChange={(e) => setNewProduct({...newProduct, bbe: e.target.value})} />
                   </div>
                   <div>
                     <label htmlFor="productDeliveryInfo" className="block text-sm font-medium mb-1 text-foreground">Delivery Information</label>
-                    <input id="productDeliveryInfo" type="text" placeholder="e.g., Ships in 2-3 days" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.delivery_info || ''} onChange={(e) => setNewProduct({...newProduct, delivery_info: e.target.value})} />
+                    <input id="productDeliveryInfo" type="text" placeholder="e.g., Ships in 2-3 days" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.delivery_info || ''} onChange={(e) => setNewProduct({...newProduct, delivery_info: e.target.value})} />
                   </div>
                 </div>
                 
-                {/* Image URL Management */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-foreground">Product Images *</label>
-                  <div className="flex items-center mb-2">
-                    <input type="url" placeholder="Enter image URL (.jpg, .png, .webp)" className="flex-grow p-2 border border-border rounded-l-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentImageUrl} onChange={(e) => setCurrentImageUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl();}}} />
-                    <button type="button" onClick={handleAddImageUrl} className="p-2 bg-amber-500 text-white rounded-r-md hover:bg-amber-600 transition-colors flex items-center justify-center h-[42px] w-[42px]"> <ImagePlus size={20} /> </button>
-                  </div>
-                  <div className="space-y-2 mb-2 max-h-32 overflow-y-auto pr-2">
-                    {Array.isArray(newProduct.image_url) && newProduct.image_url.map((url, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md border border-border">
-                        <span className="text-xs text-muted-foreground truncate flex-grow mr-2" title={url}>{url}</span>
-                        <button type="button" onClick={() => handleRemoveImageUrl(idx)} className="text-red-500 hover:text-red-700 p-1"> <Trash2 size={16} /> </button>
-                      </div>
-                    ))}
-                  </div>
-                  {(!newProduct.image_url || (Array.isArray(newProduct.image_url) && newProduct.image_url.length === 0)) && (<p className="text-xs text-muted-foreground">No images added. Add at least one URL.</p>)}
-                </div>
                 {/* B2B Fields */}
                 <div className="pt-4 border-t border-border">
                   <h4 className="text-md font-semibold text-foreground mb-2">B2B Settings</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="b2bPrice" className="block text-sm font-medium mb-1 text-foreground">B2B Price (₹)</label>
-                      <input id="b2bPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_price ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value) || null})} />
+                      <input id="b2bPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_price ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value) || null})} />
                     </div>
                     <div>
                       <label htmlFor="b2bMinQuantity" className="block text-sm font-medium mb-1 text-foreground">B2B Min. Quantity (kg)</label>
-                      <input id="b2bMinQuantity" type="number" placeholder="25" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_minimum_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value) || null})} />
+                      <input id="b2bMinQuantity" type="number" placeholder="25" min="0" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_minimum_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value) || null})} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-center">
@@ -602,7 +680,7 @@ const AdminPage: React.FC = () => {
                 </div>
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end space-x-3 pt-4">
-                  {editingProduct && (<button type="button" onClick={() => { setEditingProduct(null); setNewProduct(initialNewProductState); setCurrentImageUrl(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel Edit</button>)}
+                  {editingProduct && (<button type="button" onClick={() => { setEditingProduct(null); setNewProduct(initialNewProductState); setCurrentImageUrl(''); setImagePreviewUrl(null); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel Edit</button>)}
                   <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center"> <Save size={18} className="mr-2"/> {editingProduct ? 'Update Product' : 'Create Product'} </button>
                 </div>
               </form>
@@ -610,17 +688,17 @@ const AdminPage: React.FC = () => {
             {/* Product List - MODIFIED to show new fields and add edit buttons for nutrients/discounts */}
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-grow w-full md:w-auto">
-                <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
               <div className="relative flex-grow w-full md:w-auto">
-                <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={productTypeFilter} onChange={(e) => setProductTypeFilter(e.target.value)}>
+                <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none bg-input text-foreground transition-shadow" value={productTypeFilter} onChange={(e) => setProductTypeFilter(e.target.value)}>
                   <option value="all">All Types</option>
-                  {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                  {productTypes.map((type: string) => <option key={type} value={type}>{type}</option>)}
                 </select>
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
-              <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
+              <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
             </div>
             {loading.products ? (
               <div className="flex justify-center items-center py-10">
@@ -654,8 +732,8 @@ const AdminPage: React.FC = () => {
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-medium space-x-1">
-                          <button onClick={() => handleEditProduct(product)} className="text-amber-600 hover:text-amber-700 p-1" title="Edit Base Product Info"><Edit size={16}/></button>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-700 p-1" title="Delete Product"><Trash2 size={16}/></button>
+                          <button onClick={() => handleEditProduct(product)} className="text-accent hover:text-accent/80 p-1" title="Edit Base Product Info"><Edit size={16}/></button>
+                          <button onClick={() => handleDeleteProduct(product.id)} className="text-destructive hover:text-destructive/80 p-1" title="Delete Product"><Trash2 size={16}/></button>
                           {/* Buttons to open nutrient/discount modals could be added here or in respective tabs */}
                         </td>
                       </tr>
@@ -672,16 +750,16 @@ const AdminPage: React.FC = () => {
             <h2 className="text-2xl font-semibold text-primary mb-6">Order Management</h2>
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-grow w-full md:w-auto">
-                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTermState} onChange={(e) => setOrderSearchTermState(e.target.value)} /> {/* Renamed orderSearchTerm to orderSearchTermState */}
+                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTermState} onChange={(e) => setOrderSearchTermState(e.target.value)} /> {/* Renamed orderSearchTerm to orderSearchTermState */}
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="relative flex-grow w-full md:w-auto">
-                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilterState} onChange={(e) => setOrderStatusFilterState(e.target.value)}> {/* Renamed orderStatusFilter to orderStatusFilterState */}
+                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilterState} onChange={(e) => setOrderStatusFilterState(e.target.value)}> {/* Renamed orderStatusFilter to orderStatusFilterState */}
                         {['all', 'pending', 'processing', 'delivered', 'cancelled'].map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))} {/* Used array directly */}
                     </select>
                     <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
-                <button onClick={() => { fetchOrders(); toast({ title: "Orders Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Order List"> <RefreshCw size={18} /> </button>
+                <button onClick={() => { fetchOrders(); toast({ title: "Orders Refreshed" }) }} className="p-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg transition-colors flex items-center justify-center" title="Refresh Order List"> <RefreshCw size={18} /> </button>
             </div>
             {loading.orders ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading orders...</p></div>) : (
             <div className="overflow-x-auto rounded-lg border border-border">
@@ -708,7 +786,7 @@ const AdminPage: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'processing' ? 'bg-blue-100 text-blue-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{order.status}</span></td>
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800' }`}>{order.payment_status}</span></td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{order.items.length} item(s) <ul className="text-xs list-disc list-inside">{order.items.slice(0,2).map(item => ( <li key={item.id} className="truncate max-w-[150px]" title={item.product_name}>{item.quantity}x {item.product_name}</li>))}{order.items.length > 2 && <li>...and {order.items.length - 2} more</li>}</ul></td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatusState(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td> {/* Renamed handleUpdateOrderStatus to handleUpdateOrderStatusState */}
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatusState(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td> {/* Renamed handleUpdateOrderStatus to handleUpdateOrderStatusState */}
                         </tr>
                         )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No orders found.</td></tr>)}
                     </tbody>
@@ -728,14 +806,14 @@ const AdminPage: React.FC = () => {
                 <form onSubmit={(e) => { e.preventDefault(); handleSaveDiscountInfo(); }} className="space-y-4">
                   <div>
                     <label htmlFor="discountPercentage" className="block text-sm font-medium mb-1 text-foreground">Discount Percentage (%) *</label>
-                    <input id="discountPercentage" type="number" placeholder="e.g., 10 for 10%" min="0" max="100" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountPercentage} onChange={(e) => setCurrentDiscountPercentage(e.target.value)} required />
+                    <input id="discountPercentage" type="number" placeholder="e.g., 10 for 10%" min="0" max="100" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountPercentage} onChange={(e) => setCurrentDiscountPercentage(e.target.value)} required />
                   </div>
                   <div>
                     <label htmlFor="discountReason" className="block text-sm font-medium mb-1 text-foreground">Discount Reason (Optional)</label>
-                    <input id="discountReason" type="text" placeholder="e.g., Seasonal Sale, Clearance" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountReason} onChange={(e) => setCurrentDiscountReason(e.target.value)} />
+                    <input id="discountReason" type="text" placeholder="e.g., Seasonal Sale, Clearance" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountReason} onChange={(e) => setCurrentDiscountReason(e.target.value)} />
                   </div>
                   <div className="flex items-center justify-end space-x-3 pt-4">
-                    <button type="button" onClick={() => { setEditingDiscountForProduct(null); setCurrentDiscountPercentage(''); setCurrentDiscountReason(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel</button>
+                    <button type="button" onClick={() => { setEditingDiscountForProduct(null); setCurrentDiscountPercentage(''); setCurrentDiscountReason(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel</button>
                     <button type="submit" disabled={loading.discounts} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.discounts ? 'Saving...' : 'Save Discount'} </button>
                   </div>
                 </form>
@@ -764,7 +842,7 @@ const AdminPage: React.FC = () => {
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground truncate max-w-[200px]" title={product.discount_reason || undefined}>{product.discount_reason || '-'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                          <button onClick={() => handleEditDiscount(product)} className="text-amber-600 hover:text-amber-700 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Discount </button>
+                          <button onClick={() => handleEditDiscount(product)} className="text-accent hover:text-accent/80 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Discount </button>
                         </td>
                       </tr>
                     )) : (<tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
@@ -791,37 +869,14 @@ const AdminPage: React.FC = () => {
                          id={`nutrient_${key}`}
                          type="text"
                          placeholder={`Value for ${String(key).replace(/_/g, ' ')}`}
-                         className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground"
+                         className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground"
                          value={currentNutrientInfo[key] || ''}
                          onChange={(e) => setCurrentNutrientInfo(prev => ({...prev, [key]: e.target.value}))} />
                      </div>
                   ))}
 
-                  {/* The following section for "Add/Update Nutrient Fields" is redundant
-                      because currentNutrientInfo is initialized with all predefined keys from
-                      initialNewProductState.nutrient_info through the handleEditNutrients function.
-                      The loop above now handles displaying all necessary fields.
-                  */}
-                  {/*
-                  <div className="pt-4 border-t border-border">
-                    <h4 className="text-md font-semibold text-foreground mb-2">Add/Update Nutrient Fields</h4>
-                    {Object.keys(initialNewProductState.nutrient_info || {}).map(key => (
-                      <div key={`new_nutrient_${key}`} className="mb-2">
-                        <label htmlFor={`new_nutrient_input_${key}`} className="block text-sm font-medium mb-1 text-foreground capitalize">{String(key).replace(/_/g, ' ')}</label>
-                        <input
-                          id={`new_nutrient_input_${key}`}
-                          type="text"
-                          placeholder={`Enter ${String(key).replace(/_/g, ' ')}`}
-                          className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground"
-                          value={currentNutrientInfo[key as keyof NutrientInfo] || ''}
-                          onChange={(e) => setCurrentNutrientInfo(prev => ({...prev, [key]: e.target.value}))} />
-                      </div>
-                    ))}
-                  </div>
-                  */}
-
                   <div className="flex items-center justify-end space-x-3 pt-4">
-                    <button type="button" onClick={() => { setEditingNutrientsForProduct(null); setCurrentNutrientInfo({}); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel</button>
+                    <button type="button" onClick={() => { setEditingNutrientsForProduct(null); setCurrentNutrientInfo({}); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel</button>
                     <button type="submit" disabled={loading.nutrients} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.nutrients ? 'Saving...' : 'Save Nutrients'} </button>
                   </div>
                 </form>
@@ -850,7 +905,7 @@ const AdminPage: React.FC = () => {
                             : <XCircle className="w-5 h-5 text-red-500" />}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                          <button onClick={() => handleEditNutrients(product)} className="text-amber-600 hover:text-amber-700 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Nutrients </button>
+                          <button onClick={() => handleEditNutrients(product)} className="text-accent hover:text-accent/80 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Nutrients </button>
                         </td>
                       </tr>
                     )) : (<tr><td colSpan={3} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
