@@ -159,7 +159,7 @@ const Navbar: React.FC = () => {
               <motion.img 
                 src="/static/images/Dry_Daddy.png" 
                 alt="DryDaddy Logo" 
-                className="h-16 xl:h-20 w-auto transition-transform duration-200 group-hover:scale-105"
+                className="h-72 xl:h-80 w-auto transition-transform duration-200 group-hover:scale-105"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               />
@@ -279,7 +279,7 @@ const Navbar: React.FC = () => {
               <motion.img 
                 src="/static/images/Dry_Daddy.png" 
                 alt="DryDaddy Logo" 
-                className="h-14 w-auto"
+                className="h-72 w-auto"
                 whileTap={{ scale: 0.95 }}
               />
             </Link>
@@ -357,7 +357,7 @@ const Navbar: React.FC = () => {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="lg:hidden bg-white/98 dark:bg-gray-900/98 backdrop-blur-xl shadow-2xl absolute w-full top-16 left-0 z-40 overflow-hidden border-b border-gray-200/30 dark:border-gray-700/30"
+            className="lg:hidden bg-gray-900/95 dark:bg-gray-950/95 backdrop-blur-xl shadow-2xl absolute w-full top-16 left-0 z-40 overflow-hidden border-b border-gray-700/50 dark:border-gray-600/50"
           >
             <div className="px-4 pt-4 pb-6 space-y-3">
               {/* Navigation Links */}
@@ -372,7 +372,7 @@ const Navbar: React.FC = () => {
                     <Link
                       to={link.to}
                       onClick={handleMobileLinkClick}
-                      className="group flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 transition-all duration-200 border border-gray-100 dark:border-gray-700"
+                      className="group flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-white dark:text-gray-100 hover:text-green-400 dark:hover:text-green-400 hover:bg-green-600/20 dark:hover:bg-green-900/30 transition-all duration-200 border border-gray-600/50 dark:border-gray-600/50 bg-gray-800/80 dark:bg-gray-800/60"
                     >
                       <motion.div
                         className="w-1.5 h-8 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full mr-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
@@ -384,7 +384,7 @@ const Navbar: React.FC = () => {
               </div>
               
               {/* Divider */}
-              <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+              <div className="border-t border-gray-600/50 dark:border-gray-600/50 my-4"></div>
               
               {/* User Actions */}
               <div className="space-y-2">
@@ -398,9 +398,9 @@ const Navbar: React.FC = () => {
                       <Link
                         to="/profile"
                         onClick={handleMobileLinkClick}
-                        className="flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 border border-gray-100 dark:border-gray-700"
+                        className="flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-white dark:text-gray-100 hover:bg-gray-700/60 dark:hover:bg-gray-700/60 transition-all duration-200 border border-gray-600/50 dark:border-gray-600/50 bg-gray-800/80 dark:bg-gray-800/60"
                       >
-                        <UserIcon size={24} className="mr-4 text-gray-600 dark:text-gray-400" />
+                        <UserIcon size={24} className="mr-4 text-gray-300 dark:text-gray-400" />
                         My Profile
                       </Link>
                     </motion.div>
@@ -413,9 +413,9 @@ const Navbar: React.FC = () => {
                         <Link
                           to="/admin"
                           onClick={handleMobileLinkClick}
-                          className="flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 border border-gray-100 dark:border-gray-700"
+                          className="flex items-center px-4 py-4 rounded-xl text-lg font-semibold text-white dark:text-gray-100 hover:bg-gray-700/60 dark:hover:bg-gray-700/60 transition-all duration-200 border border-gray-600/50 dark:border-gray-600/50 bg-gray-800/80 dark:bg-gray-800/60"
                         >
-                          <Settings size={24} className="mr-4 text-gray-600 dark:text-gray-400" />
+                          <Settings size={24} className="mr-4 text-gray-300 dark:text-gray-400" />
                           Admin Dashboard
                         </Link>
                       </motion.div>
@@ -427,9 +427,9 @@ const Navbar: React.FC = () => {
                     >
                       <button
                         onClick={handleLogout}
-                        className="flex items-center w-full px-4 py-4 rounded-xl text-lg font-semibold text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200 border border-red-200 dark:border-red-800"
+                        className="flex items-center w-full px-4 py-4 rounded-xl text-lg font-semibold text-red-300 dark:text-red-400 hover:bg-red-800/40 dark:hover:bg-red-900/40 transition-all duration-200 border border-red-600/50 dark:border-red-700/50 bg-red-900/30 dark:bg-red-900/20"
                       >
-                        <LogOut size={24} className="mr-4" />
+                        <LogOut size={24} className="mr-4 text-red-300" />
                         Log Out
                       </button>
                     </motion.div>
