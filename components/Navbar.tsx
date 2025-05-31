@@ -159,7 +159,7 @@ const Navbar: React.FC = () => {
               <motion.img 
                 src="/static/images/Dry_Daddy.png" 
                 alt="DryDaddy Logo" 
-                className="h-48 xl:h-48 w-auto transition-transform duration-200 group-hover:scale-105"
+                className="h-36 xl:h-36 w-auto transition-transform duration-200 group-hover:scale-105"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               />
@@ -279,7 +279,7 @@ const Navbar: React.FC = () => {
               <motion.img 
                 src="/static/images/Dry_Daddy.png" 
                 alt="DryDaddy Logo" 
-                className="h-48 w-auto"
+                className="h-36 w-auto"
                 whileTap={{ scale: 0.95 }}
               />
             </Link>
