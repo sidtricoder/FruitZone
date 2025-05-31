@@ -52,6 +52,8 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { addToCart } = useCart(); // Re-added
+  const { toast } = useToast(); // Re-added
 
   useEffect(() => {
     const fetchRelatedProducts = async () => {
@@ -149,13 +151,26 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
               <h3 className="font-medium text-sm mb-1 line-clamp-1">{product.name}</h3>
               <p className="text-sm text-muted-foreground mb-2">₹{product.price.toLocaleString('en-IN')}</p>
               <div className="flex justify-between">
-                {/* Removed Add to Cart button as it's not typical for related products here, can be re-added if needed */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addToCart(product);
+                    toast({
+                      title: "Added to cart",
+                      description: `${product.name} has been added to your cart.`,
+                      variant: "default"
+                    });
+                  }}
+                  className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground py-1 px-2 rounded flex items-center"
+                >
+                  <ShoppingBag size={12} className="mr-1" /> Add
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/products/${product.id}`);
                   }}
-                  className="text-xs border border-primary text-primary hover:bg-primary hover:text-primary-foreground py-1 px-2 rounded flex items-center w-full justify-center" // Make view details full width
+                  className="text-xs border border-primary text-primary hover:bg-primary hover:text-primary-foreground py-1 px-2 rounded flex items-center"
                 >
                    View Details
                 </button>
