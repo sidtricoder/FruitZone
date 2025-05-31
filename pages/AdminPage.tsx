@@ -103,7 +103,7 @@ const AdminPage: React.FC = () => {
   const [currentDiscountPercentage, setCurrentDiscountPercentage] = useState<number | string>('');
   const [currentDiscountReason, setCurrentDiscountReason] = useState<string>('');
 
-  const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
+  const productTypes = ['Fruits', 'Vegetables', 'Leaves'];
 
   const initialNewProductState: Partial<Product> = {
     name: '',

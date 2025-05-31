@@ -47,51 +47,76 @@ const CartModal: React.FC = () => {
           <p className="p-8 text-center text-muted-foreground">Your cart is empty.</p>
         ) : (
           <div className="p-6 overflow-y-auto flex-grow">
-            {cartItems.map(item => (              <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">                <div className="flex items-center">                  <LazyImage 
-                    src={
-                      Array.isArray(item.image_url) && item.image_url.length > 0
-                        ? item.image_url[0]
-                        : typeof item.image_url === 'string'
-                          ? item.image_url
-                          : `/static/images/${item.type?.toLowerCase() || 'product'}-placeholder.jpg`
-                    } 
-                    alt={item.name} 
-                    className="w-16 h-16 object-contain bg-white rounded-md mr-4" 
-                    loading="lazy" 
-                    width={64} 
-                    height={64} 
-                  />
-                  <div>
-                    <h3 className="font-semibold text-foreground">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p>
+            {cartItems.map(item => { 
+              // Robust image URL parsing for cart items
+              let displayImageUrl = `/static/images/${item.type?.toLowerCase() || 'product'}-placeholder.jpg`;
+              if (item.image_url) {
+                let parsedUrls: string[] = [];
+                try {
+                  if (typeof item.image_url === 'string' && item.image_url.startsWith('[') && item.image_url.endsWith(']')) {
+                    parsedUrls = JSON.parse(item.image_url);
+                  } else if (Array.isArray(item.image_url)) {
+                    parsedUrls = item.image_url;
+                  } else if (typeof item.image_url === 'string') {
+                    if (item.image_url.trim() !== '') {
+                      parsedUrls = [item.image_url];
+                    }
+                  }
+                  parsedUrls = parsedUrls.filter(url => typeof url === 'string' && url.trim() !== '');
+                  if (parsedUrls.length > 0) {
+                    displayImageUrl = parsedUrls[0];
+                  }
+                } catch (e) {
+                  console.error("Error parsing image_url for cart item:", item.id, e);
+                  if (typeof item.image_url === 'string' && !(item.image_url.startsWith('[') && item.image_url.endsWith(']')) && item.image_url.trim() !== '') {
+                    displayImageUrl = item.image_url;
+                  }
+                }
+              }
+
+              return (
+                <div key={item.id} className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
+                  <div className="flex items-center">
+                    <LazyImage 
+                      src={displayImageUrl} 
+                      alt={item.name} 
+                      className="w-16 h-16 object-contain bg-background rounded-md mr-4" // Changed bg-white to bg-background
+                      loading="lazy" 
+                      width={64} 
+                      height={64} 
+                    />
+                    <div>
+                      <h3 className="font-semibold text-foreground">{item.name}</h3>
+                      <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={16} />
+                    </button>
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2"
+                      aria-label="Remove item"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus size={16} />
-                  </button>
-                  <span className="w-8 text-center font-medium text-foreground">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="p-1.5 bg-muted hover:bg-accent rounded-full text-muted-foreground hover:text-accent-foreground transition-colors"
-                    aria-label="Increase quantity"
-                  >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-1.5 text-red-500 hover:text-red-700 transition-colors ml-2"
-                    aria-label="Remove item"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

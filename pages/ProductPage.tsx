@@ -52,8 +52,6 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchRelatedProducts = async () => {
@@ -101,58 +99,71 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({ productId, productTyp
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {relatedProducts.map(product => (
-        <div 
-          key={product.id}
-          className="bg-card rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => navigate(`/products/${product.id}`)}
-        >
-          <div className="h-40 bg-white overflow-hidden">
-            <LazyImage 
-              src={
-                Array.isArray(product.image_url) && product.image_url.length > 0
-                  ? product.image_url[0]
-                  : typeof product.image_url === 'string'
-                    ? product.image_url
-                    : `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`
-              } 
-              alt={product.name} 
-              className="w-full h-full object-contain" 
-              width={150}
-              height={150}
-            />
-          </div>
-          <div className="p-4">
-            <h3 className="font-medium text-sm mb-1 line-clamp-1">{product.name}</h3>
-            <p className="text-sm text-muted-foreground mb-2">₹{product.price.toLocaleString('en-IN')}</p>
-            <div className="flex justify-between">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addToCart(product);
-                  toast({
-                    title: "Added to cart",
-                    description: `${product.name} has been added to your cart.`,
-                    variant: "default"
-                  });
-                }}
-                className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground py-1 px-2 rounded flex items-center"
-              >
-                <ShoppingBag size={12} className="mr-1" /> Add
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/products/${product.id}`);
-                }}
-                className="text-xs border border-primary text-primary hover:bg-primary hover:text-primary-foreground py-1 px-2 rounded flex items-center"
-              >
-                 View Details
-              </button>
+      {relatedProducts.map(product => {
+        // Robust image URL parsing for related products
+        let displayImageUrl = `/static/images/${product.type?.toLowerCase() || 'product'}-placeholder.jpg`;
+        if (product.image_url) {
+          let parsedUrls: string[] = [];
+          try {
+            if (typeof product.image_url === 'string' && product.image_url.startsWith('[') && product.image_url.endsWith(']')) {
+              parsedUrls = JSON.parse(product.image_url);
+            } else if (Array.isArray(product.image_url)) {
+              parsedUrls = product.image_url;
+            } else if (typeof product.image_url === 'string') {
+              // Ensure it's not an empty string before treating as a single URL
+              if (product.image_url.trim() !== '') {
+                parsedUrls = [product.image_url];
+              }
+            }
+            // Filter out any non-string or empty string values from the parsed array
+            parsedUrls = parsedUrls.filter(url => typeof url === 'string' && url.trim() !== '');
+            if (parsedUrls.length > 0) {
+              displayImageUrl = parsedUrls[0]; // Use the first valid URL
+            }
+          } catch (e) {
+            console.error("Error parsing image_url for related product:", product.id, e);
+            // Fallback for single string URL if parsing failed and it wasn't a JSON string
+            if (typeof product.image_url === 'string' && !(product.image_url.startsWith('[') && product.image_url.endsWith(']')) && product.image_url.trim() !== '') {
+                displayImageUrl = product.image_url;
+            }
+            // Otherwise, the placeholder set initially remains
+          }
+        }
+
+        return (
+          <div 
+            key={product.id}
+            className="bg-card rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => navigate(`/products/${product.id}`)}
+          >
+            <div className="h-40 bg-background rounded-t-lg overflow-hidden flex items-center justify-center"> {/* Ensure background matches main product image */}
+              <LazyImage 
+                src={displayImageUrl} 
+                alt={product.name} 
+                className="w-full h-full object-contain" 
+                width={150}
+                height={150}
+              />
+            </div>
+            <div className="p-4">
+              <h3 className="font-medium text-sm mb-1 line-clamp-1">{product.name}</h3>
+              <p className="text-sm text-muted-foreground mb-2">₹{product.price.toLocaleString('en-IN')}</p>
+              <div className="flex justify-between">
+                {/* Removed Add to Cart button as it's not typical for related products here, can be re-added if needed */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/products/${product.id}`);
+                  }}
+                  className="text-xs border border-primary text-primary hover:bg-primary hover:text-primary-foreground py-1 px-2 rounded flex items-center w-full justify-center" // Make view details full width
+                >
+                   View Details
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
