@@ -297,6 +297,25 @@ const ProductPage: React.FC = () => {
     navigate(-1);
   };
 
+  const handleShare = async () => {
+    try {
+      const productUrl = `${window.location.origin}/products/${product?.id}`;
+      await navigator.clipboard.writeText(productUrl);
+      toast({
+        title: "Link copied!",
+        description: "Product link has been copied to your clipboard.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy link. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 flex justify-center items-center">
@@ -494,6 +513,7 @@ const ProductPage: React.FC = () => {
               </button>
               <button 
                 type="button"
+                onClick={handleShare}
                 title="Share Product"
                 className="p-3 rounded-lg border border-border text-muted-foreground hover:bg-muted/50 hover:text-primary transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background flex items-center justify-center sm:px-4"
               >

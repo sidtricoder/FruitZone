@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { animate } from 'motion';
 import { ArrowRight } from 'lucide-react';
 import { useLenis } from '@/hooks/useLenis';
@@ -19,6 +19,7 @@ interface ProductImageInfo {
 
 const HomePage: React.FC = () => {
   useLenis();
+  const navigate = useNavigate();
 
   const heroSectionRef = useRef<HTMLElement>(null);
   const heroTitleRef = useRef<HTMLHeadingElement>(null);
@@ -192,7 +193,11 @@ const HomePage: React.FC = () => {
           {/* Render the duplicated list of products */}
           <div ref={horizontalScrollTrackRef} className="flex h-full" style={{ display: 'none' }}>
             {displayProducts.map((product, index) => (
-              <div key={`${product.id}-${index}`} className="product-scroll-item h-full flex-shrink-0 w-[60vw] sm:w-[40vw] md:w-[30vw] lg:w-[25vw] p-2">
+              <div 
+                key={`${product.id}-${index}`} 
+                className="product-scroll-item h-full flex-shrink-0 w-[60vw] sm:w-[40vw] md:w-[30vw] lg:w-[25vw] p-2 cursor-pointer transition-transform duration-300 hover:scale-105"
+                onClick={() => navigate(`/products/${product.id}`)}
+              >
                 <LazyImage
                   src={getFirstImageUrl(product.image_url, '/static/images/Dry_Daddy.png')}
                   alt={product.name}
@@ -205,16 +210,16 @@ const HomePage: React.FC = () => {
           </div>
         </div>
         
-        <div ref={heroTextContainerRef} className="relative z-10 container mx-auto px-6 py-12 md:py-20 bg-white/60 backdrop-blur-lg rounded-xl shadow-2xl max-w-4xl mt-[20vh] sm:mt-[25vh]"> {/* Added margin-top to push text down a bit */}
+        <div ref={heroTextContainerRef} className="relative z-10 px-6 py-12 md:py-20 bg-white/60 backdrop-blur-lg rounded-xl shadow-2xl max-w-2xl ml-6 md:ml-12 lg:ml-16 mt-[20vh] sm:mt-[25vh]"> {/* Positioned to left with left margin */}
           <h1
             ref={heroTitleRef}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-600 to-red-700 mb-6 leading-tight tracking-tight dark:from-amber-400 dark:via-orange-400 dark:to-red-500"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-600 to-red-700 mb-6 leading-tight tracking-tight dark:from-amber-400 dark:via-orange-400 dark:to-red-500"
           >
             Unlock Nature's <span className="block md:inline">Concentrated Essence</span>
           </h1>
           <p
             ref={heroParaRef}
-            className="text-lg md:text-xl lg:text-2xl text-gray-700 dark:text-gray-300 mb-10 max-w-2xl mx-auto font-medium"
+            className="text-base md:text-lg lg:text-xl text-gray-700 dark:text-gray-300 mb-10 font-medium"
           >
             Experience the vibrant taste and potent nutrition of meticulously dehydrated fruits & vegetables – nature's goodness, intensified.
           </p>
