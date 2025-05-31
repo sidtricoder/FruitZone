@@ -121,60 +121,53 @@ const HomePage: React.FC = () => {
       if (heroButtonRef.current) gsap.set(heroButtonRef.current, { opacity: 1, scale: 1 });
     }
 
-    // ADDED: GSAP Horizontal Scroll Animation
-    if (horizontalScrollContainerRef.current && horizontalScrollTrackRef.current && productsForScroll.length > 0 && heroSectionRef.current && !prefersReducedMotionQuery.matches) {
-      const container = horizontalScrollContainerRef.current;
+    // GSAP Horizontal Scroll Animation
+    if (horizontalScrollTrackRef.current && heroSectionRef.current && productsForScroll.length > 0 && !prefersReducedMotionQuery.matches) {
       const track = horizontalScrollTrackRef.current;
       const hero = heroSectionRef.current;
+      const items = gsap.utils.toArray<HTMLElement>('.product-scroll-item', track);
 
-      if (track.children.length === 0) return;
+      if (items.length === 0) return; // Should not happen if productsForScroll.length > 0
 
-      // Kill previous ScrollTriggers on these elements
       ScrollTrigger.getAll().forEach(trigger => {
-        // Check if the trigger is associated with the hero or the track animation
-        let isAssociatedWithTrack = false;
+        let isAssociated = false;
         if (trigger.animation) {
           const targets = (trigger.animation as any).targets ? (trigger.animation as any).targets() : [];
           if (Array.isArray(targets)) {
-            isAssociatedWithTrack = targets.includes(track);
+            isAssociated = targets.includes(track);
           }
         }
-        if (trigger.trigger === hero || isAssociatedWithTrack) {
+        if (trigger.trigger === hero || isAssociated) {
           trigger.kill();
         }
       });
       
-      // Ensure the track is visible before calculating scrollDistance
-      gsap.set(track, { display: 'flex'}); // Make sure it's flex for width calculation
+      gsap.set(track, { display: 'flex'}); 
       
-      // Calculate scroll distance after track items are rendered and visible
-      // Use a small delay if images are loading and affecting width
       setTimeout(() => {
-        let scrollDistance = track.scrollWidth - container.offsetWidth;
-        
-        if (scrollDistance > 0) {
-          gsap.to(track, {
-            x: () => -scrollDistance,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: hero,
-              start: 'top top',
-              end: () => `+=${scrollDistance}`, // Vertical scroll distance to complete horizontal scroll
-              scrub: 1,
-              pin: hero,
-              pinSpacing: true,
-              invalidateOnRefresh: true,
-            },
-          });
-        } else {
-          gsap.set(track, { x: 0 }); // No scroll needed
-        }
-      }, 100); // Small delay for layout to settle
+        const scrollableWidth = track.scrollWidth - hero.offsetWidth;
+
+        gsap.to(track, { 
+          x: () => (scrollableWidth > 0 ? -scrollableWidth : 0),
+          ease: 'none',
+          scrollTrigger: {
+            trigger: hero,
+            pin: hero,
+            scrub: 1,
+            snap: (items.length > 1 && scrollableWidth > 0) ? (1 / (items.length - 1)) : undefined,
+            end: () => `+=${hero.offsetWidth}`,
+            invalidateOnRefresh: true,
+            // markers: true, // Uncomment for debugging
+          },
+        });
+      }, 100); 
 
     } else if (prefersReducedMotionQuery.matches && horizontalScrollTrackRef.current) {
       gsap.set(horizontalScrollTrackRef.current, { x: 0 });
+      // If hero was pinned by a ScrollTrigger, ensure it's unpinned or handled for reduced motion
+      // For simplicity, existing ScrollTriggers are killed in cleanup. If one was created for pinning hero,
+      // it would be killed. If reduced motion is on, the ST above isn't created.
     }
-
 
     // Benefits Section - Staggered card reveal
     if (benefitsSectionRef.current && !prefersReducedMotionQuery.matches) {
