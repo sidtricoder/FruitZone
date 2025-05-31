@@ -199,7 +199,8 @@ const Navbar: React.FC = () => {
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                       className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg py-1 z-50"
-                    >                      <Link
+                    >
+                      <Link
                         to="/profile"
                         className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
                         onClick={() => setIsProfileDropdownOpen(false)}
@@ -295,7 +296,7 @@ const Navbar: React.FC = () => {
                   {link.label}
                 </Link>
               ))}
-                {isAuthenticated ? (
+              {isAuthenticated ? (
                 <>
                   <Link
                     to="/profile"
@@ -304,7 +305,7 @@ const Navbar: React.FC = () => {
                   >
                     My Profile
                   </Link>
-                    {isAdmin && (
+                  {isAdmin && (
                     <Link
                       to="/admin"
                       onClick={handleMobileLinkClick}
