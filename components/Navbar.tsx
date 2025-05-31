@@ -126,35 +126,48 @@ const Navbar: React.FC = () => {
   return (
     <nav ref={navRef} className="bg-background/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 dark:bg-background/80 opacity-0">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <div className="flex items-center">
+        <div className="flex items-center h-16 relative">
+          {/* Navigation Links - Left Side */}
+          <div className="hidden md:flex items-center space-x-3 lg:space-x-4 flex-1">
+            {navLinks.map(link => (
+              <Link key={link.label} to={link.to}>
+                <Button 
+                  variant="ghost" 
+                  className="text-base lg:text-lg font-medium px-4 py-2 h-10 hover:bg-muted/80 transition-colors"
+                >
+                  {link.label}
+                </Button>
+              </Link>
+            ))}
+          </div>
+
+          {/* Logo - Center */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
             <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
               <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" />
             </Link>
           </div>
 
-          {/* Desktop Menu */} 
-          <div className="hidden md:flex items-center space-x-1 sm:space-x-2">
-            {navLinks.map(link => (
-              <Link key={link.label} to={link.to}>
-                <Button variant="ghost" size="sm">{link.label}</Button>
-              </Link>
-            ))}
+          {/* Mobile Logo - Visible only on mobile */}
+          <div className="md:hidden flex items-center flex-1">
+            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
+              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
+            </Link>
           </div>
 
           {/* Right side icons - Desktop */}
-          <div className="hidden md:flex items-center space-x-2">
+          <div className="hidden md:flex items-center space-x-2 flex-1 justify-end">
             <Button 
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               aria-label="Toggle theme"
-              className="w-8 h-8 sm:w-auto sm:h-auto"
+              className="w-10 h-10"
             >
               {theme === 'dark' ? (
-                <Sun className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Sun className="h-5 w-5" />
               ) : (
-                <Moon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Moon className="h-5 w-5" />
               )}
             </Button>
 
@@ -163,11 +176,11 @@ const Navbar: React.FC = () => {
               size="icon" 
               onClick={toggleCart} // Use toggleCart from context
               aria-label="My Cart" 
-              className="relative"
+              className="relative w-10 h-10"
             >
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {totalItems}
                 </span>
               )}
