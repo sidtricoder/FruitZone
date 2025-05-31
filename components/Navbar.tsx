@@ -120,7 +120,7 @@ const Navbar: React.FC = () => {
     { to: "/shop", label: "Our Products" },
     { to: "/b2b", label: "B2B" }, // Assuming /b2b is a valid route
     { to: "/whats-daddy-for", label: "What’s Daddy for" }, // Assuming /whats-daddy-for is a valid route
-    { to: "/drydaddy-who", label: "DryDaddy who?" }, // Assuming /drydaddy-who is a valid route
+    { to: "/about-us", label: "DryDaddy who?" }, // Changed from /drydaddy-who to /about-us
   ];
 
   return (

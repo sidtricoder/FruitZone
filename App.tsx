@@ -16,6 +16,7 @@ const CheckoutPage = lazy(() => import("./pages/CheckoutPage")); // Import Check
 const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // Import UserProfilePage
 const AdminPage = lazy(() => import("./pages/AdminPage")); // Import AdminPage
 const ProductPage = lazy(() => import("./pages/ProductPage")); // Import ProductPage
+const AboutUsPage = lazy(() => import("./pages/AboutUsPage")); // Import AboutUsPage
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -85,6 +86,10 @@ function AppContent() {
                   <AdminPage />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/about-us" 
+              element={<AboutUsPage />} 
             />
             {/* Debug route */}
             <Route 
