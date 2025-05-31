@@ -126,37 +126,31 @@ const Navbar: React.FC = () => {
   return (
     <nav ref={navRef} className="bg-background/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 dark:bg-background/80 opacity-0">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex items-center h-16 relative">
-          {/* Navigation Links - Left Side */}
-          <div className="hidden md:flex items-center space-x-3 lg:space-x-4 flex-1">
+        <div className="flex items-center h-20">
+          {/* Left: Navigation Links */}
+          <div className="hidden md:flex items-center flex-1 space-x-6">
             {navLinks.map(link => (
-              <Link key={link.label} to={link.to}>
-                <Button 
-                  variant="ghost" 
-                  className="text-base lg:text-lg font-medium px-4 py-2 h-10 hover:bg-muted/80 transition-colors"
-                >
+              <Link key={link.label} to={link.to} className="relative">
+                <span className="text-base font-semibold hover:underline underline-offset-4 decoration-2 transition-colors">
                   {link.label}
-                </Button>
+                </span>
               </Link>
             ))}
           </div>
 
-          {/* Logo - Center */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
+          {/* Center: Logo */}
+          <div className="flex justify-center items-center flex-shrink-0">
             <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
               <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" />
             </Link>
           </div>
 
-          {/* Mobile Logo - Visible only on mobile */}
-          <div className="md:hidden flex items-center flex-1">
-            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
-              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
-            </Link>
-          </div>
-
-          {/* Right side icons - Desktop */}
-          <div className="hidden md:flex items-center space-x-2 flex-1 justify-end">
+          {/* Right: Icons */}
+          <div className="hidden md:flex items-center flex-1 justify-end space-x-6">
+            {/* Example: Add a search icon if needed */}
+            {/* <Button variant="ghost" size="icon" aria-label="Search" className="w-10 h-10">
+              <SearchIcon className="h-5 w-5" />
+            </Button> */}
             <Button 
               variant="ghost"
               size="icon"
@@ -170,11 +164,10 @@ const Navbar: React.FC = () => {
                 <Moon className="h-5 w-5" />
               )}
             </Button>
-
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={toggleCart} // Use toggleCart from context
+              onClick={toggleCart}
               aria-label="My Cart" 
               className="relative w-10 h-10"
             >
@@ -185,7 +178,6 @@ const Navbar: React.FC = () => {
                 </span>
               )}
             </Button>
-            
             {isAuthenticated ? (
               <div className="relative" ref={profileDropdownRef}>
                 <Button variant="ghost" size="icon" onClick={toggleProfileDropdown} aria-label="User Profile">
@@ -233,7 +225,12 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button & Icons */} 
+          {/* Mobile: Logo left, icons right */}
+          <div className="md:hidden flex items-center flex-1">
+            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
+              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
+            </Link>
+          </div>
           <div className="md:hidden flex items-center">
             <Button 
               variant="ghost"
@@ -244,12 +241,10 @@ const Navbar: React.FC = () => {
             >
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
-
-            {/* Updated Mobile Cart Link/Button to use toggleCart from context */}
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => { toggleCart(); handleMobileLinkClick(); }} // Use toggleCart from context
+              onClick={() => { toggleCart(); handleMobileLinkClick(); }}
               aria-label="My Cart"
               className="relative mr-2"
             >
@@ -260,7 +255,6 @@ const Navbar: React.FC = () => {
                 </span>
               )}
             </Button>
-
             <Button 
               variant="ghost" 
               size="icon" 
