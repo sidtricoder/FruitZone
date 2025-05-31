@@ -13,7 +13,7 @@ gsap.registerPlugin(ScrollTrigger);
 // ADDED: Interface for product data
 interface ProductImageInfo {
   id: string;
-  product_name: string;
+  name: string; // Changed from product_name to name
   image_url: string | string[] | null;
 }
 
@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('id, product_name, image_url')
+          .select('id, name, image_url') // Changed from product_name to name
           .order('created_at', { ascending: true })
           .limit(10); // Fetch 10 products
 
@@ -264,7 +264,7 @@ const HomePage: React.FC = () => {
               <div key={product.id} className="product-scroll-item h-full flex-shrink-0 w-[60vw] sm:w-[40vw] md:w-[30vw] lg:w-[25vw] p-2">
                 <LazyImage
                   src={getFirstImageUrl(product.image_url, '/static/images/Dry_Daddy.png')} // Using Dry_Daddy.png as a placeholder
-                  alt={product.product_name}
+                  alt={product.name} // Changed from product.product_name to product.name
                   className="w-full h-full object-cover rounded-lg shadow-lg"
                   width={400} // Example width, adjust as needed
                   height={600} // Example height, adjust for aspect ratio
