@@ -25,13 +25,7 @@ const HomePage: React.FC = () => {
   const heroTextContainerRef = useRef<HTMLDivElement>(null);
   const heroParaRef = useRef<HTMLParagraphElement>(null);
   const heroButtonRef = useRef<HTMLDivElement>(null);
-  const benefitsSectionRef = useRef<HTMLElement>(null);
-  const usageSectionRef = useRef<HTMLElement>(null);
-  const ctaSectionRef = useRef<HTMLElement>(null);
-  // REMOVED: const vantaRef = useRef<HTMLDivElement>(null);
-  // REMOVED: const [vantaEffect, setVantaEffect] = useState<any>(null);
 
-  // ADDED: Refs and state for horizontal scroll
   const horizontalScrollContainerRef = useRef<HTMLDivElement>(null);
   const horizontalScrollTrackRef = useRef<HTMLDivElement>(null);
   const [productsForScroll, setProductsForScroll] = useState<ProductImageInfo[]>([]);
@@ -64,7 +58,7 @@ const HomePage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('products')
-          .select('id, name, image_url') // Changed from product_name to name
+          .select('id, name, image_url')
           .order('created_at', { ascending: true })
           .limit(10); // Fetch 10 products
 
@@ -73,6 +67,9 @@ const HomePage: React.FC = () => {
           return;
         }
         if (data) {
+          // Ensure we have enough items for a good visual loop, duplicate if necessary
+          // For true infinite feel with 10 items, duplicating once is good.
+          // If less than 5, maybe duplicate more, but 10 is a good base.
           setProductsForScroll(data as ProductImageInfo[]);
         }
       } catch (err) {
@@ -87,7 +84,6 @@ const HomePage: React.FC = () => {
 
     const handleReducedMotionChange = () => {
       gsap.globalTimeline.timeScale(prefersReducedMotionQuery.matches ? 0 : 1);
-      // REMOVED: Vanta-specific logic for reduced motion
     };
     handleReducedMotionChange(); // Initial check
     prefersReducedMotionQuery.addEventListener('change', handleReducedMotionChange);
@@ -125,10 +121,8 @@ const HomePage: React.FC = () => {
     if (horizontalScrollTrackRef.current && heroSectionRef.current && productsForScroll.length > 0 && !prefersReducedMotionQuery.matches) {
       const track = horizontalScrollTrackRef.current;
       const hero = heroSectionRef.current;
-      const items = gsap.utils.toArray<HTMLElement>('.product-scroll-item', track);
-
-      if (items.length === 0) return; // Should not happen if productsForScroll.length > 0
-
+      
+      // Kill previous ScrollTriggers associated with hero or track
       ScrollTrigger.getAll().forEach(trigger => {
         let isAssociated = false;
         if (trigger.animation) {
@@ -142,141 +136,110 @@ const HomePage: React.FC = () => {
         }
       });
       
-      gsap.set(track, { display: 'flex'}); 
-      
-      setTimeout(() => {
-        const scrollableWidth = track.scrollWidth - hero.offsetWidth;
+      gsap.set(track, { display: 'flex', x: 0 }); // Ensure track is ready and reset position
 
-        gsap.to(track, { 
-          x: () => (scrollableWidth > 0 ? -scrollableWidth : 0),
-          ease: 'none',
-          scrollTrigger: {
-            trigger: hero,
-            pin: hero,
-            scrub: 1,
-            snap: (items.length > 1 && scrollableWidth > 0) ? (1 / (items.length - 1)) : undefined,
-            end: () => `+=${hero.offsetWidth}`,
-            invalidateOnRefresh: true,
-            // markers: true, // Uncomment for debugging
-          },
+      // Timeout to allow images and layout to settle
+      setTimeout(() => {
+        const numOriginalProducts = productsForScroll.length;
+        if (numOriginalProducts === 0) return;
+
+        const allDomItems = gsap.utils.toArray<HTMLElement>('.product-scroll-item', track);
+        // Ensure allDomItems reflects the duplicated items in the DOM (2 * numOriginalProducts)
+        if (allDomItems.length < numOriginalProducts * 2) {
+            console.warn("DOM items not yet fully rendered or mismatch in count for infinite scroll.");
+            // Potentially re-run this setup or wait longer if items are lazy-loaded affecting width
+            // For now, we'll proceed, but this could be a source of issues if widths are not stable.
+            if (allDomItems.length === 0) return; // Cannot proceed if no items
+        }
+        
+        let oneSetWidth = 0;
+        // Calculate width of the first (original) set of products
+        // This assumes items are rendered: [P1,P2,...Pn, P1',P2',...Pn']
+        for (let i = 0; i < numOriginalProducts; i++) {
+          if (allDomItems[i]) {
+            // Adding a small buffer for potential margins/paddings if not perfectly flush
+            const itemStyle = window.getComputedStyle(allDomItems[i]);
+            const marginLeft = parseFloat(itemStyle.marginLeft);
+            const marginRight = parseFloat(itemStyle.marginRight);
+            oneSetWidth += allDomItems[i].offsetWidth + marginLeft + marginRight;
+          } else {
+            console.error(`Scroll item at index ${i} not found for width calculation.`);
+            return; // Cannot proceed
+          }
+        }
+        
+        if (oneSetWidth === 0 || hero.offsetWidth === 0) {
+            console.warn("oneSetWidth or hero.offsetWidth is 0, aborting ScrollTrigger setup.");
+            return;
+        }
+
+        const loopingTl = gsap.timeline({ repeat: -1 });
+        loopingTl.to(track, {
+          x: -oneSetWidth, // Animate by the width of one full set of original items
+          ease: "none",
+          duration: numOriginalProducts * 1.5, // Adjust duration for scroll speed (e.g., 1.5s per item)
         });
-      }, 100); 
+
+        ScrollTrigger.create({
+          animation: loopingTl,
+          trigger: hero,
+          pin: hero,
+          scrub: 1,
+          snap: {
+            snapTo: 1 / numOriginalProducts, // Snap to each item within one iteration of the timeline
+            duration: { min: 0.2, max: 0.6 },
+            delay: 0,
+            ease: "power1.inOut"
+          },
+          end: () => `+=${hero.offsetWidth * 2}`, // Scroll for twice hero width to see loops
+          invalidateOnRefresh: true,
+          // markers: true, // Uncomment for debugging
+        });
+      }, 300); // Increased timeout slightly for image loading and layout
 
     } else if (prefersReducedMotionQuery.matches && horizontalScrollTrackRef.current) {
       gsap.set(horizontalScrollTrackRef.current, { x: 0 });
-      // If hero was pinned by a ScrollTrigger, ensure it's unpinned or handled for reduced motion
-      // For simplicity, existing ScrollTriggers are killed in cleanup. If one was created for pinning hero,
-      // it would be killed. If reduced motion is on, the ST above isn't created.
     }
 
-    // Benefits Section - Staggered card reveal
-    if (benefitsSectionRef.current && !prefersReducedMotionQuery.matches) {
-      gsap.fromTo(
-        benefitsSectionRef.current.querySelectorAll('.benefit-card'),
-        { opacity: 0, y: 50 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.7,
-          stagger: 0.2,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: benefitsSectionRef.current,
-            start: 'top 80%',
-            toggleActions: 'play none none none',
-          },
-        }
-      );
-    } else if (benefitsSectionRef.current) {
-        gsap.set(benefitsSectionRef.current.querySelectorAll('.benefit-card'), {opacity: 1, y: 0});
-    }
-
-    // Usage Section - Image and text reveal
-    if (usageSectionRef.current && !prefersReducedMotionQuery.matches) {
-      const usageImage = usageSectionRef.current.querySelector('.usage-image');
-      const usageTextItems = usageSectionRef.current.querySelectorAll('.usage-text-item');
-      if (usageImage) {
-        gsap.fromTo(usageImage, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: usageSectionRef.current, start: 'top 75%', toggleActions: 'play none none none' } });
-      }
-      if (usageTextItems.length > 0) {
-        gsap.fromTo(usageTextItems, { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 0.7, stagger: 0.15, ease: 'power3.out', scrollTrigger: { trigger: usageSectionRef.current, start: 'top 70%', toggleActions: 'play none none none' } });
-      }
-    } else if (usageSectionRef.current) {
-        const usageImage = usageSectionRef.current.querySelector('.usage-image');
-        const usageTextItems = usageSectionRef.current.querySelectorAll('.usage-text-item');
-        if (usageImage) gsap.set(usageImage, {opacity: 1, x: 0});
-        if (usageTextItems.length > 0) gsap.set(usageTextItems, {opacity: 1, x: 0});
-    }
-
-
-    // CTA Section - Reveal
-    if (ctaSectionRef.current && !prefersReducedMotionQuery.matches) {
-      gsap.fromTo(
-        ctaSectionRef.current.children,
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          stagger: 0.2,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: ctaSectionRef.current,
-            start: 'top 85%',
-            toggleActions: 'play none none none',
-          },
-        }
-      );
-    } else if (ctaSectionRef.current) {
-        gsap.set(ctaSectionRef.current.children, {opacity: 1, y: 0});
-    }
+    // REMOVED: Benefits, Usage, CTA section GSAP animations
 
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       prefersReducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
-      // REMOVED: vantaEffect.destroy() and observer.disconnect()
-      // Keep specific GSAP cleanups if still relevant, though ScrollTrigger.killAll() is broad.
       if (heroParaRef.current) gsap.killTweensOf(heroParaRef.current);
       if (heroButtonRef.current) gsap.killTweensOf(heroButtonRef.current);
-      const benefitCards = benefitsSectionRef.current?.querySelectorAll('.benefit-card');
-      if (benefitCards) gsap.killTweensOf(benefitCards);
-      const usageImage = usageSectionRef.current?.querySelector('.usage-image');
-      if (usageImage) gsap.killTweensOf(usageImage);
-      const usageTextItems = usageSectionRef.current?.querySelectorAll('.usage-text-item');
-      if (usageTextItems) gsap.killTweensOf(usageTextItems);
-      if (ctaSectionRef.current?.children) gsap.killTweensOf(ctaSectionRef.current.children);
+      // REMOVED: GSAP cleanups for Benefits, Usage, CTA sections
     };
-  }, [productsForScroll]); // Added productsForScroll to dependency array
+  }, [productsForScroll]); // productsForScroll is the key dependency
+
+  // Create a list of products to display, duplicating for the infinite scroll effect
+  const displayProducts = productsForScroll.length > 0 
+    ? [...productsForScroll, ...productsForScroll.map(p => ({...p, id: `${p.id}_clone_${Math.random()}`}))] 
+    : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50 text-gray-800 dark:from-slate-900 dark:via-slate-800 dark:to-gray-900 dark:text-gray-200">
       <section
         ref={heroSectionRef}
-        className="text-center relative overflow-hidden min-h-screen" // Ensure enough height for pinning
+        className="text-center relative overflow-hidden min-h-screen"
       >
-        {/* REMOVED: Vanta.js container */}
-        {/* <div ref={vantaRef} className="absolute inset-0 z-0 hero-vanta-canvas"></div> */}
-
-        {/* ADDED: Horizontal Scrolling Background */}
         <div ref={horizontalScrollContainerRef} className="absolute inset-0 z-0 overflow-hidden">
-          <div ref={horizontalScrollTrackRef} className="flex h-full" style={{ display: 'none' }}> {/* Initially hidden until GSAP positions it */}
-            {productsForScroll.map(product => (
-              <div key={product.id} className="product-scroll-item h-full flex-shrink-0 w-[60vw] sm:w-[40vw] md:w-[30vw] lg:w-[25vw] p-2">
+          {/* Render the duplicated list of products */}
+          <div ref={horizontalScrollTrackRef} className="flex h-full" style={{ display: 'none' }}>
+            {displayProducts.map((product, index) => (
+              <div key={`${product.id}-${index}`} className="product-scroll-item h-full flex-shrink-0 w-[60vw] sm:w-[40vw] md:w-[30vw] lg:w-[25vw] p-2">
                 <LazyImage
-                  src={getFirstImageUrl(product.image_url, '/static/images/Dry_Daddy.png')} // Using Dry_Daddy.png as a placeholder
-                  alt={product.name} // Changed from product.product_name to product.name
+                  src={getFirstImageUrl(product.image_url, '/static/images/Dry_Daddy.png')}
+                  alt={product.name}
                   className="w-full h-full object-cover rounded-lg shadow-lg"
-                  width={400} // Example width, adjust as needed
-                  height={600} // Example height, adjust for aspect ratio
+                  width={400}
+                  height={600}
                 />
               </div>
             ))}
           </div>
         </div>
         
-        {/* REMOVED: Animated background shapes - can be re-added if styled appropriately */}
-        {/* <div className="absolute inset-0 z-1 opacity-40"> ... </div> */}
-
         <div ref={heroTextContainerRef} className="relative z-10 container mx-auto px-6 py-12 md:py-20 bg-white/60 backdrop-blur-lg rounded-xl shadow-2xl max-w-4xl mt-[20vh] sm:mt-[25vh]"> {/* Added margin-top to push text down a bit */}
           <h1
             ref={heroTitleRef}
@@ -303,114 +266,9 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section ref={benefitsSectionRef} className="py-16 md:py-24 bg-white dark:bg-slate-800">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-orange-700 dark:text-orange-400 mb-12 md:mb-16">The Art of Dehydration</h2>
-          <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
-            {[{
-              title: "Peak Flavor & Aroma",
-              description: "Our gentle, slow dehydration process locks in the natural sugars and aromatic compounds, delivering an unparalleled taste experience.",
-              icon: "🍓"
-            }, {
-              title: "Nutrient Powerhouses",
-              description: "Concentrated vitamins, minerals, and antioxidants in every morsel, supporting your vibrant well-being from the inside out.",
-              icon: "✨"
-            }, {
-              title: "Sustainable Indulgence",
-              description: "Reduce food waste and savor seasonal flavors year-round with our eco-conscious preservation. Good for you, good for the planet.",
-              icon: "🌿"
-            }].map((benefit, index) => (
-              <div // Changed from motion.div
-                key={index}
-                // Removed Framer Motion props, GSAP handles this via scrollTrigger
-                className="benefit-card bg-orange-50 dark:bg-slate-700 p-8 rounded-xl shadow-lg hover:shadow-2xl dark:shadow-orange-500/30 transition-shadow duration-300 flex flex-col items-center text-center"
-              >
-                <div className="text-5xl mb-5 p-4 bg-white dark:bg-slate-600 rounded-full shadow-md inline-block">{benefit.icon}</div>
-                <h3 className="text-2xl font-semibold text-orange-600 dark:text-orange-400 mb-3">{benefit.title}</h3>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{benefit.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Usage Section */}
-      <section ref={usageSectionRef} className="py-16 md:py-24 bg-red-50 dark:bg-gray-800">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-red-700 dark:text-red-400 mb-12 md:mb-16">Unleash Culinary Creativity</h2>
-          <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
-            <div // Changed from motion.div
-              // GSAP will handle animation via .usage-image class
-              className="usage-image overflow-hidden rounded-xl shadow-2xl dark:shadow-red-500/30"
-            >
-              <LazyImage 
-                src="/static/images/home-usage-image.jpg" 
-                alt="Artistic display of various dehydrated fruit and vegetable pieces in a bowl"
-                className="rounded-xl object-cover w-full h-auto max-h-[450px] md:max-h-[500px] transform hover:scale-110 transition-transform duration-500 ease-out"
-                loading="lazy"
-                width={800}
-                height={500}
-              />
-            </div>
-            <div
-              // GSAP will handle animation
-              className="space-y-6"
-            >
-              {[{
-                title: "Elevated Snacking",
-                description: "Transform your snack time from mundane to magical with wholesome, intensely flavorful crisps and chews."
-              }, {
-                title: "Culinary Alchemy",
-                description: "Unleash concentrated flavors in your signature dishes, baked goods, or as sophisticated gourmet garnishes."
-              }, {
-                title: "Artisanal Infusions",
-                description: "Craft bespoke infused oils, vinegars, spirits, or teas with vibrant, pure fruit and herb notes."
-              }, {
-                title: "Wellness Boosters",
-                description: "Effortlessly add a potent dose of natural vitamins and fiber to smoothies, trail mixes, or homemade energy bars."
-              }].map((use, index) => (
-                <div // Changed from motion.div
-                  key={index} 
-                  className="usage-text-item bg-white dark:bg-slate-700 p-6 rounded-lg shadow-md hover:shadow-lg dark:shadow-red-500/30 transition-shadow duration-300"
-                  // GSAP will handle animation
-                >
-                  <h3 className="text-xl font-semibold text-red-600 dark:text-red-400 mb-2">{use.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300">{use.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Call to Action - Shop Now */}
-      <section ref={ctaSectionRef} className="py-20 md:py-28 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 dark:from-amber-600 dark:via-orange-600 dark:to-red-700">
-        <div className="container mx-auto px-6 text-center">
-          <h2 // Changed from motion.h2
-            // GSAP will handle animation
-            className="text-3xl md:text-4xl font-bold text-white dark:text-gray-100 mb-6"
-          >
-            Ready to Taste the Difference?
-          </h2>
-          <p // Changed from motion.p
-            // GSAP will handle animation
-            className="text-lg md:text-xl text-red-100 dark:text-red-200 mb-10 max-w-2xl mx-auto"
-          >
-            Explore our curated selection of premium dehydrated fruits and vegetables. Uncompromising quality and extraordinary flavor, delivered.
-          </p>
-          <div // Changed from motion.div
-            // GSAP will handle animation
-          >
-            <Link
-              to="/shop"
-              className="bg-white hover:bg-gray-100 text-orange-600 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-orange-500 font-bold py-3 px-8 md:py-4 md:px-10 rounded-full text-base md:text-lg transition-all duration-300 ease-in-out transform hover:scale-105 inline-flex items-center shadow-xl hover:shadow-2xl dark:shadow-orange-400/50"
-            >
-              Discover Our Products <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* REMOVED: Benefits Section JSX */}
+      {/* REMOVED: Usage Section JSX */}
+      {/* REMOVED: Call to Action - Shop Now JSX */}
     </div>
   );
 };

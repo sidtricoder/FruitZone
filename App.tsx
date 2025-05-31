@@ -17,6 +17,7 @@ const UserProfilePage = lazy(() => import("./pages/UserProfilePage")); // Import
 const AdminPage = lazy(() => import("./pages/AdminPage")); // Import AdminPage
 const ProductPage = lazy(() => import("./pages/ProductPage")); // Import ProductPage
 const AboutUsPage = lazy(() => import("./pages/AboutUsPage")); // Import AboutUsPage
+const WhatsDaddyForPage = lazy(() => import("./pages/WhatsDaddyForPage")); // ADDED: Import WhatsDaddyForPage
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -91,6 +92,10 @@ function AppContent() {
               path="/about-us" 
               element={<AboutUsPage />} 
             />
+            <Route 
+              path="/whats-daddy-for" 
+              element={<WhatsDaddyForPage />} 
+            /> {/* ADDED: Route for WhatsDaddyForPage */}
             {/* Debug route */}
             <Route 
               path="/debug" 
