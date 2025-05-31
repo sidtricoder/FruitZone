@@ -124,149 +124,231 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav ref={navRef} className="bg-background/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 dark:bg-background/80 opacity-0">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex items-center h-20 relative justify-between">
-          {/* Left: Navigation Links */}
-          <div className="hidden md:flex items-center space-x-6">
-            {navLinks.map(link => (
-              <Link key={link.label} to={link.to} className="relative">
-                <span className="text-base font-semibold hover:underline underline-offset-4 decoration-2 transition-colors">
+    <nav ref={navRef} className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/20 dark:border-gray-700/30 shadow-lg fixed w-full top-0 z-50 opacity-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 lg:h-20">
+          
+          {/* Desktop Navigation Links - Left */}
+          <div className="hidden lg:flex items-center space-x-1">
+            {navLinks.map((link) => (
+              <Link key={link.label} to={link.to} className="group relative">
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200"
+                >
                   {link.label}
-                </span>
+                </motion.div>
+                <motion.div
+                  className="absolute bottom-0 left-1/2 h-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"
+                  initial={{ width: 0, x: "-50%" }}
+                  whileHover={{ width: "80%" }}
+                  transition={{ duration: 0.2 }}
+                />
               </Link>
             ))}
           </div>
 
-          {/* Center: Logo */}
-          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
-            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
-              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" />
+          {/* Desktop Logo - Center */}
+          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2">
+            <Link 
+              to="/" 
+              className="flex items-center group" 
+              onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false); }}
+            >
+              <motion.img 
+                src="/static/images/Dry_Daddy.png" 
+                alt="DryDaddy Logo" 
+                className="h-12 xl:h-16 w-auto transition-transform duration-200 group-hover:scale-105"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              />
             </Link>
           </div>
 
-          {/* Right: Icons */}
-          <div className="hidden md:flex items-center space-x-6">
-            {/* Example: Add a search icon if needed */}
-            {/* <Button variant="ghost" size="icon" aria-label="Search" className="w-10 h-10">
-              <SearchIcon className="h-5 w-5" />
-            </Button> */}
-            <Button 
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className="w-10 h-10"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleCart}
-              aria-label="My Cart" 
-              className="relative w-10 h-10"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
+          {/* Desktop Action Icons - Right */}
+          <div className="hidden lg:flex items-center space-x-2">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle theme"
+                className="w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                ) : (
+                  <Moon className="h-5 w-5 text-gray-600" />
+                )}
+              </Button>
+            </motion.div>
+            
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggleCart}
+                aria-label="My Cart" 
+                className="relative w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+              >
+                <ShoppingCart className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                {totalItems > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg"
+                  >
+                    {totalItems}
+                  </motion.span>
+                )}
+              </Button>
+            </motion.div>
+            
             {isAuthenticated ? (
               <div className="relative" ref={profileDropdownRef}>
-                <Button variant="ghost" size="icon" onClick={toggleProfileDropdown} aria-label="User Profile">
-                  <UserCircle className="h-6 w-6 sm:h-7 sm:w-7 text-gray-700 dark:text-gray-300" />
-                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleProfileDropdown} 
+                    aria-label="User Profile"
+                    className="w-10 h-10 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                  >
+                    <UserCircle className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                  </Button>
+                </motion.div>
                 <AnimatePresence>
                   {isProfileDropdownOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg py-1 z-50"
+                      className="absolute right-0 mt-3 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl py-2 z-50 backdrop-blur-xl"
                     >
                       <Link
                         to="/profile"
-                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                        className="flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
                         onClick={() => setIsProfileDropdownOpen(false)}
                       >
-                        <UserIcon size={16} className="mr-2" /> My Profile
+                        <UserIcon size={18} className="mr-3 text-gray-500" /> 
+                        <span className="font-medium">My Profile</span>
                       </Link>
                       {isAdmin && (
                         <Link
                           to="/admin"
-                          className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                          className="flex items-center px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
                           onClick={() => setIsProfileDropdownOpen(false)}
                         >
-                          <Settings size={16} className="mr-2" /> Admin Dashboard
+                          <Settings size={18} className="mr-3 text-gray-500" /> 
+                          <span className="font-medium">Admin Dashboard</span>
                         </Link>
                       )}
+                      <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
                       <button
                         onClick={handleLogout}
-                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted w-full text-left"
+                        className="flex items-center w-full px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150"
                       >
-                        <LogOut size={16} className="mr-2" /> Log Out
+                        <LogOut size={18} className="mr-3" /> 
+                        <span className="font-medium">Log Out</span>
                       </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             ) : (
-              <Link to="/auth">
-                <Button size="sm">Login</Button>
-              </Link>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link to="/auth">
+                  <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium px-6 py-2 rounded-xl shadow-lg transition-all duration-200">
+                    Login
+                  </Button>
+                </Link>
+              </motion.div>
             )}
           </div>
 
-          {/* Mobile: Logo left, icons right */}
-          <div className="md:hidden flex items-center">
-             <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
-               <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
-             </Link>
-            <Button 
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className="w-8 h-8 mr-2"
+          {/* Mobile Layout */}
+          <div className="lg:hidden flex items-center justify-between w-full">
+            {/* Mobile Logo */}
+            <Link 
+              to="/" 
+              className="flex items-center" 
+              onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false); }}
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => { toggleCart(); handleMobileLinkClick(); }}
-              aria-label="My Cart"
-              className="relative mr-2"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleMobileMenu}
-              aria-label="Toggle menu"
-              className="w-8 h-8"
-            >
-              {isMobileMenuOpen ? <CloseIcon className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+              <motion.img 
+                src="/static/images/Dry_Daddy.png" 
+                alt="DryDaddy Logo" 
+                className="h-10 w-auto"
+                whileTap={{ scale: 0.95 }}
+              />
+            </Link>
+
+            {/* Mobile Action Icons */}
+            <div className="flex items-center space-x-1">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  aria-label="Toggle theme"
+                  className="w-9 h-9 rounded-xl"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-4 w-4 text-yellow-500" />
+                  ) : (
+                    <Moon className="h-4 w-4 text-gray-600" />
+                  )}
+                </Button>
+              </motion.div>
+              
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => { toggleCart(); handleMobileLinkClick(); }}
+                  aria-label="My Cart"
+                  className="relative w-9 h-9 rounded-xl"
+                >
+                  <ShoppingCart className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  {totalItems > 0 && (
+                    <motion.span 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center"
+                    >
+                      {totalItems}
+                    </motion.span>
+                  )}
+                </Button>
+              </motion.div>
+              
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleMobileMenu}
+                  aria-label="Toggle menu"
+                  className="w-9 h-9 rounded-xl"
+                >
+                  <motion.div
+                    animate={{ rotate: isMobileMenuOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {isMobileMenuOpen ? (
+                      <CloseIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                    ) : (
+                      <Menu className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                    )}
+                  </motion.div>
+                </Button>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Enhanced Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -275,53 +357,99 @@ const Navbar: React.FC = () => {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="md:hidden bg-background/95 backdrop-blur-md shadow-lg absolute w-full top-16 left-0 z-40 overflow-hidden"
+            className="lg:hidden bg-white/98 dark:bg-gray-900/98 backdrop-blur-xl shadow-2xl absolute w-full top-16 left-0 z-40 overflow-hidden border-b border-gray-200/30 dark:border-gray-700/30"
           >
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              {navLinks.map(link => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  onClick={handleMobileLinkClick}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              {isAuthenticated ? (
-                <>
-                  <Link
-                    to="/profile"
-                    onClick={handleMobileLinkClick}
-                    className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+            <div className="px-4 pt-4 pb-6 space-y-3">
+              {/* Navigation Links */}
+              <div className="space-y-2">
+                {navLinks.map((link, index) => (
+                  <motion.div
+                    key={link.label}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
                   >
-                    My Profile
-                  </Link>
-                  {isAdmin && (
                     <Link
-                      to="/admin"
+                      to={link.to}
                       onClick={handleMobileLinkClick}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                      className="group flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-200 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all duration-200"
                     >
-                      Admin Dashboard
+                      <motion.div
+                        className="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      />
+                      {link.label}
                     </Link>
-                  )}
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Divider */}
+              <div className="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+              
+              {/* User Actions */}
+              <div className="space-y-2">
+                {isAuthenticated ? (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      <Link
+                        to="/profile"
+                        onClick={handleMobileLinkClick}
+                        className="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+                      >
+                        <UserIcon size={20} className="mr-3 text-gray-500" />
+                        My Profile
+                      </Link>
+                    </motion.div>
+                    {isAdmin && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 }}
+                      >
+                        <Link
+                          to="/admin"
+                          onClick={handleMobileLinkClick}
+                          className="flex items-center px-4 py-3 rounded-xl text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+                        >
+                          <Settings size={20} className="mr-3 text-gray-500" />
+                          Admin Dashboard
+                        </Link>
+                      </motion.div>
+                    )}
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.8 }}
+                    >
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-3 rounded-xl text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
+                      >
+                        <LogOut size={20} className="mr-3" />
+                        Log Out
+                      </button>
+                    </motion.div>
+                  </>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 }}
                   >
-                    Log Out
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/auth"
-                  onClick={handleMobileLinkClick}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:bg-muted"
-                >
-                  Login
-                </Link>
-              )}
+                    <Link
+                      to="/auth"
+                      onClick={handleMobileLinkClick}
+                      className="flex items-center justify-center w-full px-4 py-3 rounded-xl text-base font-medium bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      Login
+                    </Link>
+                  </motion.div>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
