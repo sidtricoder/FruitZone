@@ -126,9 +126,9 @@ const Navbar: React.FC = () => {
   return (
     <nav ref={navRef} className="bg-background/80 backdrop-blur-md shadow-sm fixed w-full top-0 z-50 dark:bg-background/80 opacity-0">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex items-center h-20">
+        <div className="flex items-center h-20 relative justify-between">
           {/* Left: Navigation Links */}
-          <div className="hidden md:flex items-center flex-1 space-x-6">
+          <div className="hidden md:flex items-center space-x-6">
             {navLinks.map(link => (
               <Link key={link.label} to={link.to} className="relative">
                 <span className="text-base font-semibold hover:underline underline-offset-4 decoration-2 transition-colors">
@@ -139,14 +139,14 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Center: Logo */}
-          <div className="flex justify-center items-center flex-shrink-0">
+          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
             <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
               <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-20 w-auto" />
             </Link>
           </div>
 
           {/* Right: Icons */}
-          <div className="hidden md:flex items-center flex-1 justify-end space-x-6">
+          <div className="hidden md:flex items-center space-x-6">
             {/* Example: Add a search icon if needed */}
             {/* <Button variant="ghost" size="icon" aria-label="Search" className="w-10 h-10">
               <SearchIcon className="h-5 w-5" />
@@ -226,12 +226,10 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Mobile: Logo left, icons right */}
-          <div className="md:hidden flex items-center flex-1">
-            <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
-              <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
-            </Link>
-          </div>
           <div className="md:hidden flex items-center">
+             <Link to="/" className="flex items-center" onClick={() => { setIsMobileMenuOpen(false); setIsProfileDropdownOpen(false);}}>
+               <img src="/static/images/Dry_Daddy.png" alt="DryDaddy Logo" className="h-16 w-auto" />
+             </Link>
             <Button 
               variant="ghost"
               size="icon"
