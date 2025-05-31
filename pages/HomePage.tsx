@@ -122,7 +122,6 @@ const HomePage: React.FC = () => {
       const track = horizontalScrollTrackRef.current;
       const hero = heroSectionRef.current;
       
-      // Kill previous ScrollTriggers associated with hero or track
       ScrollTrigger.getAll().forEach(trigger => {
         let isAssociated = false;
         if (trigger.animation) {
@@ -136,48 +135,44 @@ const HomePage: React.FC = () => {
         }
       });
       
-      gsap.set(track, { display: 'flex', x: 0 }); // Ensure track is ready and reset position
+      gsap.set(track, { display: 'flex', x: 0 });
 
-      // Timeout to allow images and layout to settle
       setTimeout(() => {
         const numOriginalProducts = productsForScroll.length;
         if (numOriginalProducts === 0) return;
 
         const allDomItems = gsap.utils.toArray<HTMLElement>('.product-scroll-item', track);
-        // Ensure allDomItems reflects the duplicated items in the DOM (2 * numOriginalProducts)
+        
         if (allDomItems.length < numOriginalProducts * 2) {
-            console.warn("DOM items not yet fully rendered or mismatch in count for infinite scroll.");
-            // Potentially re-run this setup or wait longer if items are lazy-loaded affecting width
-            // For now, we'll proceed, but this could be a source of issues if widths are not stable.
-            if (allDomItems.length === 0) return; // Cannot proceed if no items
+            console.error(
+              `Infinite scroll setup: Not all DOM items rendered. Expected: ${numOriginalProducts * 2}, Found: ${allDomItems.length}. Aborting GSAP setup for this attempt. Increase timeout or ensure images load faster.`
+            );
+            return; 
         }
         
         let oneSetWidth = 0;
-        // Calculate width of the first (original) set of products
-        // This assumes items are rendered: [P1,P2,...Pn, P1',P2',...Pn']
         for (let i = 0; i < numOriginalProducts; i++) {
           if (allDomItems[i]) {
-            // Adding a small buffer for potential margins/paddings if not perfectly flush
             const itemStyle = window.getComputedStyle(allDomItems[i]);
             const marginLeft = parseFloat(itemStyle.marginLeft);
             const marginRight = parseFloat(itemStyle.marginRight);
             oneSetWidth += allDomItems[i].offsetWidth + marginLeft + marginRight;
           } else {
-            console.error(`Scroll item at index ${i} not found for width calculation.`);
-            return; // Cannot proceed
+            console.error(`Scroll item at index ${i} not found for width calculation. This should not happen if allDomItems.length check passed.`);
+            return; 
           }
         }
         
         if (oneSetWidth === 0 || hero.offsetWidth === 0) {
-            console.warn("oneSetWidth or hero.offsetWidth is 0, aborting ScrollTrigger setup.");
+            console.warn("oneSetWidth or hero.offsetWidth is 0, aborting ScrollTrigger setup. Check item visibility and dimensions.");
             return;
         }
 
         const loopingTl = gsap.timeline({ repeat: -1 });
         loopingTl.to(track, {
-          x: -oneSetWidth, // Animate by the width of one full set of original items
+          x: -oneSetWidth,
           ease: "none",
-          duration: numOriginalProducts * 1.5, // Adjust duration for scroll speed (e.g., 1.5s per item)
+          duration: numOriginalProducts * 2, // Adjusted duration slightly (e.g., 2s per item on average for 10 items = 20s)
         });
 
         ScrollTrigger.create({
@@ -185,36 +180,32 @@ const HomePage: React.FC = () => {
           trigger: hero,
           pin: hero,
           scrub: 1,
-          snap: {
-            snapTo: 1 / numOriginalProducts, // Snap to each item within one iteration of the timeline
-            duration: { min: 0.2, max: 0.6 },
-            delay: 0,
-            ease: "power1.inOut"
-          },
-          end: () => `+=${hero.offsetWidth * 2}`, // Scroll for twice hero width to see loops
+          // snap: { // Temporarily disabled for debugging glitch
+          //   snapTo: 1 / numOriginalProducts, 
+          //   duration: { min: 0.2, max: 0.6 },
+          //   delay: 0,
+          //   ease: "power1.inOut"
+          // },
+          end: () => `+=${oneSetWidth}`, // End scroll after one full set width has been scrolled
           invalidateOnRefresh: true,
-          // markers: true, // Uncomment for debugging
+          // markers: true,
         });
-      }, 300); // Increased timeout slightly for image loading and layout
+      }, 1500); // Increased timeout significantly to 1.5 seconds
 
     } else if (prefersReducedMotionQuery.matches && horizontalScrollTrackRef.current) {
       gsap.set(horizontalScrollTrackRef.current, { x: 0 });
     }
-
-    // REMOVED: Benefits, Usage, CTA section GSAP animations
 
     return () => {
       ScrollTrigger.getAll().forEach(trigger => trigger.kill());
       prefersReducedMotionQuery.removeEventListener('change', handleReducedMotionChange);
       if (heroParaRef.current) gsap.killTweensOf(heroParaRef.current);
       if (heroButtonRef.current) gsap.killTweensOf(heroButtonRef.current);
-      // REMOVED: GSAP cleanups for Benefits, Usage, CTA sections
     };
-  }, [productsForScroll]); // productsForScroll is the key dependency
+  }, [productsForScroll]);
 
-  // Create a list of products to display, duplicating for the infinite scroll effect
   const displayProducts = productsForScroll.length > 0 
-    ? [...productsForScroll, ...productsForScroll.map(p => ({...p, id: `${p.id}_clone_${Math.random()}`}))] 
+    ? [...productsForScroll, ...productsForScroll.map(p => ({...p, id: `${p.id}_clone_${Math.random().toString(36).substr(2, 9)}`}))] 
     : [];
 
   return (
