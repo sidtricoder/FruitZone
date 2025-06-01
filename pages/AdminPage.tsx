@@ -2,27 +2,49 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button'; // Added Button import
 import { 
   Package, ShoppingBag, Edit, Trash2, Search, 
-  CheckCircle, XCircle, Filter, Save, ImagePlus, RefreshCw
+  CheckCircle, XCircle, Filter, Save, RefreshCw,
+  Percent, Info, PlusCircle, X // Added PlusCircle and X icons
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
-// Define needed types
+// Define NutrientInfo if not already available (e.g. from ShopPage or a global types file)
+interface NutrientInfo {
+  energy_kcal?: string;
+  carbohydrates_g?: string;
+  dietary_fiber_g?: string;
+  saturated_fat_g?: string;
+  protein_g?: string;
+  total_fat_g?: string;
+  [key: string]: string | undefined;
+}
+
+// Updated Product interface consistent with ShopPage.tsx
 interface Product {
   id: number;
   name: string;
-  description: string | null; // Assuming description can also be null based on typical DB schemas
-  price: number;
-  stock_quantity: number;
+  description: string | null;
+  price: number; // This is 'x', the discounted price set by admin
   image_url: string | string[]; 
+  type: string;
+  // New fields from Product interface update
+  brand?: string;
+  origin?: string;
+  bbe?: string; // Best Before End
+  delivery_info?: string; // Delivery information
+  discount_percentage?: number | null; // 'z', discount percentage
+  discount_reason?: string | null; // Reason for the discount
+  nutrient_info?: NutrientInfo | null; // Nutrient information object
+  // Existing fields from AdminPage
+  stock_quantity: number;
   created_at: string;
   updated_at: string;
-  b2b_price: number | null; // Corrected: Allow null
-  b2b_minimum_quantity: number | null; // Corrected: Allow null
-  is_b2b: boolean;
-  type: string;
+  b2b_price?: number | null; // Changed to optional and allow null
+  b2b_minimum_quantity?: number | null; // Changed to optional and allow null
+  is_b2b?: boolean; // Changed to optional
 }
 
 interface Order {
@@ -35,7 +57,7 @@ interface Order {
   shipping_address: string;
   payment_status: 'pending' | 'paid' | 'failed';
   items: OrderItem[];
-  user_details?: {
+  user_details?: { // Made user_details optional as it might not always be present
     full_name: string;
     mobile_number: string;
   };
@@ -57,51 +79,81 @@ const AdminPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersState, setOrdersState] = useState<Order[]>([]); // Renamed orders to ordersState
   const [loading, setLoading] = useState({
     products: false,
     orders: false,
-    adminCheck: true
+    adminCheck: true,
+    discounts: false, // Added loading state for discounts
+    nutrients: false, // Added loading state for nutrients
   });
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [productTypeFilter, setProductTypeFilter] = useState('all');
-  const [orderSearchTerm, setOrderSearchTerm] = useState('');
-  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+  const [orderSearchTermState, setOrderSearchTermState] = useState(''); // Defined orderSearchTermState
+  const [orderStatusFilterState, setOrderStatusFilterState] = useState('all'); // Defined orderStatusFilterState
   const [isAdmin, setIsAdmin] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
+  // State for managing nutrient info form for a selected product
+  const [editingNutrientsForProduct, setEditingNutrientsForProduct] = useState<Product | null>(null);
+  const [currentNutrientInfo, setCurrentNutrientInfo] = useState<NutrientInfo>({});
+
+  // State for managing discount form for a selected product
+  const [editingDiscountForProduct, setEditingDiscountForProduct] = useState<Product | null>(null);
+  const [currentDiscountPercentage, setCurrentDiscountPercentage] = useState<number | string>('');
+  const [currentDiscountReason, setCurrentDiscountReason] = useState<string>('');
+
+  const productTypes = ['Fruits', 'Vegetables', 'Leaves'];
+
   const initialNewProductState: Partial<Product> = {
     name: '',
     description: '',
     price: 0,
     stock_quantity: 0,
     image_url: [] as string[],
-    b2b_price: null, // Corrected: Initialize with null
-    b2b_minimum_quantity: 25, // Default or null
+    b2b_price: null,
+    b2b_minimum_quantity: 25,
     is_b2b: false,
     type: 'Fruits',
+    brand: '',
+    origin: '',
+    bbe: '',
+    delivery_info: '',
+    discount_percentage: null,
+    discount_reason: '',
+    nutrient_info: { // Define default keys for nutrient_info
+      energy_kcal: '',
+      carbohydrates_g: '',
+      dietary_fiber_g: '',
+      saturated_fat_g: '',
+      protein_g: '',
+      total_fat_g: '',
+    },
   };
   const [newProduct, setNewProduct] = useState<Partial<Product>>(initialNewProductState);
   
   const [currentImageUrl, setCurrentImageUrl] = useState('');
-  
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); 
+
+  // Fetch products from Supabase
   const fetchProducts = useCallback(async () => {
-    setLoading(prev => ({...prev, products: true}));
+    setLoading(prev => ({...prev, products: true, discounts: true, nutrients: true})); // Also set discount/nutrient loading
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*') // Ensure all new fields are selected if they exist in DB
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
+      setProducts(data as Product[] || []); // Cast to Product[]
+    } catch (error: any) {
       console.error('Error fetching products:', error);
       toast({ title: "Error fetching products", description: "There was an error loading products.", variant: "destructive" });
     } finally {
-      setLoading(prev => ({...prev, products: false}));
+      setLoading(prev => ({...prev, products: false, discounts: false, nutrients: false}));
     }
   }, [toast]);
 
+  // Fetch orders from Supabase
   const fetchOrders = useCallback(async () => {
     setLoading(prev => ({...prev, orders: true}));
     try {
@@ -141,7 +193,7 @@ const AdminPage: React.FC = () => {
           return { ...order, items: [], user_details: undefined };
         }
       }));
-      setOrders(completeOrders);
+      setOrdersState(completeOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({ title: "Error fetching orders", description: "There was an error loading orders.", variant: "destructive" });
@@ -150,6 +202,7 @@ const AdminPage: React.FC = () => {
     }
   }, [toast]);
 
+  // Check admin status on mount
   useEffect(() => {
     let isMounted = true;
     setLoading(prev => ({...prev, adminCheck: true}));
@@ -226,31 +279,39 @@ const AdminPage: React.FC = () => {
         toast({ title: "Invalid Image URL", description: "URL must end with valid extension.", variant: "destructive" });
         return;
       }
-      const currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+      let currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+      // If editing, newProduct.image_url might be a string if only one image was previously saved.
+      if (typeof newProduct.image_url === 'string' && newProduct.image_url.trim() !== '') {
+        currentImages = [newProduct.image_url];
+      }
+      
       setNewProduct(prev => ({ ...prev, image_url: [...currentImages, currentImageUrl.trim()] }));
       setCurrentImageUrl('');
+      setImagePreviewUrl(null); // Clear preview after adding
     }
   };
 
   // Handle removing an image URL
   const handleRemoveImageUrl = (idx: number) => {
-    if (Array.isArray(newProduct.image_url)) {
-      const updatedImageUrls = newProduct.image_url.filter((_, i) => i !== idx);
-      setNewProduct(prev => ({ ...prev, image_url: updatedImageUrls }));
+    let currentImages = Array.isArray(newProduct.image_url) ? newProduct.image_url : [];
+    if (typeof newProduct.image_url === 'string') {
+        currentImages = [newProduct.image_url];
     }
+    const updatedImageUrls = currentImages.filter((_, i) => i !== idx);
+    setNewProduct(prev => ({ ...prev, image_url: updatedImageUrls.length > 0 ? updatedImageUrls : [] }));
   };
   
   const filteredProducts = products.filter(product => 
     (product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase())) &&
+    (product.description || '').toLowerCase().includes(productSearchTerm.toLowerCase())) &&
     (productTypeFilter === 'all' || product.type === productTypeFilter)
   );
 
-  const filteredOrders = orders.filter(order =>
-    (order.user_details?.full_name?.toLowerCase().includes(orderSearchTerm.toLowerCase()) ||
-    order.user_details?.mobile_number?.includes(orderSearchTerm) ||
-    order.id.toString().includes(orderSearchTerm)) &&
-    (orderStatusFilter === 'all' || order.status === orderStatusFilter)
+  const filteredOrdersState = ordersState.filter(order => // Defined filteredOrdersState using ordersState
+    (order.user_details?.full_name?.toLowerCase().includes(orderSearchTermState.toLowerCase()) ||
+    order.user_details?.mobile_number?.includes(orderSearchTermState) ||
+    order.id.toString().includes(orderSearchTermState)) &&
+    (orderStatusFilterState === 'all' || order.status === orderStatusFilterState)
   );
 
   const handleSaveProduct = async () => {
@@ -276,46 +337,109 @@ const AdminPage: React.FC = () => {
         description: newProduct.description,
         price: newProduct.price,
         stock_quantity: newProduct.stock_quantity,
-        image_url: newProduct.image_url, // Supabase can handle array of strings if column type is text[] or jsonb
+        image_url: newProduct.image_url,
         b2b_price: newProduct.b2b_price,
         b2b_minimum_quantity: newProduct.b2b_minimum_quantity,
         is_b2b: newProduct.is_b2b,
         type: newProduct.type,
+        brand: newProduct.brand,
+        origin: newProduct.origin,
+        bbe: newProduct.bbe,
+        delivery_info: newProduct.delivery_info,
+        // discount_percentage and discount_reason are managed in their own section
+        // nutrient_info is managed in its own section
         updated_at: new Date(),
       };
 
       if (editingProduct) {
-        const { error } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
-        if (error) throw error;
+        // When updating, ensure all fields are correctly passed, including potentially unchanged ones like discount/nutrients
+        // if they are not meant to be reset by this specific save action.
+        // However, the current logic separates these concerns, so productData is fine as is.
+        const { data: _updateData, error: updateError } = await supabase.from('products').update(productData).eq('id', editingProduct.id).select();
+        if (updateError) throw updateError;
         toast({ title: "Product updated", description: `${newProduct.name} updated.` });
       } else {
-        const { error } = await supabase.from('products').insert([productData]).select();
-        if (error) throw error;
+        // For new products, ensure discount and nutrient fields are initialized if needed, or handled post-creation
+        const finalProductData = {
+            ...productData,
+            discount_percentage: newProduct.discount_percentage || null,
+            discount_reason: newProduct.discount_reason || null,
+            // Ensure nutrient_info is an object, even if empty, not null
+            nutrient_info: newProduct.nutrient_info && Object.keys(newProduct.nutrient_info).length > 0 ? newProduct.nutrient_info : {},
+            created_at: new Date(), // Also add created_at for new products
+        };
+        const { data: _insertData, error: insertError } = await supabase.from('products').insert([finalProductData]).select();
+        if (insertError) throw insertError;
         toast({ title: "Product created", description: `${newProduct.name} created.` });
       }
       setEditingProduct(null);
       setNewProduct(initialNewProductState);
       setCurrentImageUrl('');
+      setImagePreviewUrl(null); // Clear preview on cancel/save
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      toast({ title: "Error saving product", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Error saving product", description: error.message || "Please try again.", variant: "destructive" });
     }
   };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
+
+    let processedImageUrls: string[] = [];
+    if (product.image_url) {
+      try {
+        if (typeof product.image_url === 'string' && product.image_url.startsWith('[') && product.image_url.endsWith(']')) {
+          // Attempt to parse if it's a string that looks like a JSON array
+          const parsed = JSON.parse(product.image_url);
+          if (Array.isArray(parsed)) {
+            processedImageUrls = parsed.filter(url => typeof url === 'string');
+          } else if (typeof parsed === 'string') {
+            processedImageUrls = [parsed]; // If parsing results in a single string somehow
+          } else {
+            console.warn("Parsed image_url string was not an array or string:", parsed);
+            processedImageUrls = [];
+          }
+        } else if (Array.isArray(product.image_url)) {
+          // If it's already an array, use it directly, ensuring all elements are strings
+          processedImageUrls = product.image_url.filter(url => typeof url === 'string');
+        } else if (typeof product.image_url === 'string' && product.image_url.trim() !== '') {
+          // If it's a single, non-empty string URL
+          processedImageUrls = [product.image_url];
+        } else {
+          // Fallback for other unexpected types or empty string
+          processedImageUrls = [];
+        }
+      } catch (e) {
+        console.error("Error parsing image_url for product:", product.id, product.image_url, e);
+        // Fallback: if it was a string and parsing failed, try to treat as single URL if not empty.
+        // Otherwise, default to empty array.
+        if (typeof product.image_url === 'string' && product.image_url.trim() !== '') {
+          processedImageUrls = [product.image_url];
+        } else {
+          processedImageUrls = [];
+        }
+      }
+    }
+
     setNewProduct({
       name: product.name,
       description: product.description,
       price: product.price,
       stock_quantity: product.stock_quantity,
-      image_url: product.image_url,
-      b2b_price: product.b2b_price, // Corrected: direct assignment
-      b2b_minimum_quantity: product.b2b_minimum_quantity, // Corrected: direct assignment
+      image_url: processedImageUrls, // Use the robustly parsed URLs
+      b2b_price: product.b2b_price,
+      b2b_minimum_quantity: product.b2b_minimum_quantity,
       is_b2b: product.is_b2b,
       type: product.type,
+      brand: product.brand,
+      origin: product.origin,
+      bbe: product.bbe,
+      delivery_info: product.delivery_info,
+      // discount_percentage, discount_reason, and nutrient_info are handled separately
     });
+    setCurrentImageUrl(''); // Clear the input field for new image URLs
+    setImagePreviewUrl(null); // Clear the preview for the new image URL input
   };
 
   const handleDeleteProduct = async (productId: number) => {
@@ -331,7 +455,7 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: number, status: string) => {
+  const handleUpdateOrderStatusState = async (orderId: number, status: string) => { // Defined handleUpdateOrderStatusState
     try {
       const { error } = await supabase.from('orders').update({ status, updated_at: new Date() }).eq('id', orderId);
       if (error) throw error;
@@ -343,28 +467,109 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  if (loading.adminCheck) {
-    return <div className="flex items-center justify-center min-h-screen bg-background"><div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div><p className="ml-4 text-lg text-muted-foreground">Verifying access...</p></div>;
-  }
+  // Handle saving nutrient information
+  const handleSaveNutrientInfo = async () => {
+    if (!editingNutrientsForProduct) return;
+    setLoading(prev => ({...prev, nutrients: true}));
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ nutrient_info: currentNutrientInfo, updated_at: new Date() })
+        .eq('id', editingNutrientsForProduct.id);
+      if (error) throw error;
+      toast({ title: "Nutrient Info Saved", description: `Nutrients for ${editingNutrientsForProduct.name} updated.` });
+      setEditingNutrientsForProduct(null);
+      setCurrentNutrientInfo({});
+      fetchProducts(); // Refresh product list
+    } catch (error: any) {
+      console.error('Error saving nutrient info:', error);
+      toast({ title: "Error Saving Nutrients", description: error.message || "Could not save nutrient information.", variant: "destructive" });
+    } finally {
+      setLoading(prev => ({...prev, nutrients: false}));
+    }
+  };
+
+  // Handle opening nutrient edit modal/form
+  const handleEditNutrients = (product: Product) => {
+    setEditingNutrientsForProduct(product);
+    // Ensure all default nutrient keys are present when initializing currentNutrientInfo
+    const defaultNutrientKeys = initialNewProductState.nutrient_info || {};
+    const existingNutrientInfo = product.nutrient_info || {};
+    const mergedNutrientInfo = { ...defaultNutrientKeys, ...existingNutrientInfo };
+    setCurrentNutrientInfo(mergedNutrientInfo);
+  };
+
+  // Handle saving discount information
+  const handleSaveDiscountInfo = async () => {
+    if (!editingDiscountForProduct) return;
+    setLoading(prev => ({...prev, discounts: true}));
+    try {
+      const percentage = parseFloat(currentDiscountPercentage as string);
+      if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+        toast({ title: "Invalid Discount", description: "Percentage must be between 0 and 100.", variant: "destructive" });
+        setLoading(prev => ({...prev, discounts: false}));
+        return;
+      }
+      const { error } = await supabase
+        .from('products')
+        .update({
+          discount_percentage: percentage,
+          discount_reason: currentDiscountReason,
+          updated_at: new Date()
+        })
+        .eq('id', editingDiscountForProduct.id);
+      if (error) throw error;
+      toast({ title: "Discount Info Saved", description: `Discount for ${editingDiscountForProduct.name} updated.` });
+      setEditingDiscountForProduct(null);
+      setCurrentDiscountPercentage('');
+      setCurrentDiscountReason('');
+      fetchProducts(); // Refresh product list
+    } catch (error: any) {
+      console.error('Error saving discount info:', error);
+      toast({ title: "Error Saving Discount", description: error.message || "Could not save discount information.", variant: "destructive" });
+    } finally {
+      setLoading(prev => ({...prev, discounts: false}));
+    }
+  };
+
+  // Handle opening discount edit modal/form
+  const handleEditDiscount = (product: Product) => {
+    setEditingDiscountForProduct(product);
+    setCurrentDiscountPercentage(product.discount_percentage?.toString() || '');
+    setCurrentDiscountReason(product.discount_reason || '');
+  };
+
+  // Effect to update image preview when currentImageUrl changes
+  useEffect(() => {
+    if (currentImageUrl && (/\.(jpeg|jpg|png|gif|webp|svg)$/i.test(currentImageUrl))) {
+      setImagePreviewUrl(currentImageUrl);
+    } else {
+      setImagePreviewUrl(null);
+    }
+  }, [currentImageUrl]);
+
   if (!isAdmin) {
     return <div className="flex items-center justify-center min-h-screen bg-background"><p className="text-lg text-destructive">Access Denied. Redirecting...</p></div>;
   }
   
-  const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other'];
-  const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled'];
+  // const productTypes = ['Fruits', 'Vegetables', 'Dairy', 'Bakery', 'Meat', 'Beverages', 'Snacks', 'Other']; // Moved to component scope
+  // const orderStatuses = ['all', 'pending', 'processing', 'delivered', 'cancelled']; // Commented out as orderStatuses is unused
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pt-20 md:pt-24">
       <header className="mb-8"><h1 className="text-3xl md:text-4xl font-bold text-primary text-center">Admin Dashboard</h1></header>
       <Tabs defaultValue="products" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-2 mb-6 bg-card shadow-sm">
-          <TabsTrigger value="products" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Package className="w-5 h-5 mr-2" /> Manage Products</TabsTrigger>
-          <TabsTrigger value="orders" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ShoppingBag className="w-5 h-5 mr-2" /> Manage Orders</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6 bg-card shadow-sm">
+          <TabsTrigger value="products" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Package className="w-5 h-5 mr-2" /> Products</TabsTrigger>
+          <TabsTrigger value="orders" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><ShoppingBag className="w-5 h-5 mr-2" /> Orders</TabsTrigger>
+          <TabsTrigger value="discounts" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Percent className="w-5 h-5 mr-2" /> Discounts</TabsTrigger>
+          <TabsTrigger value="nutrients" className="py-3 text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Info className="w-5 h-5 mr-2" /> Nutrients</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
           <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold text-primary mb-6">Product Management</h2>
+            {/* Product Add/Edit Form - MODIFIED to include new fields */}
             <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
               <h3 className="text-xl font-semibold text-foreground mb-4">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
               <form onSubmit={(e) => { e.preventDefault(); handleSaveProduct(); }} className="space-y-4">
@@ -372,59 +577,134 @@ const AdminPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productName" className="block text-sm font-medium mb-1 text-foreground">Product Name *</label>
-                    <input id="productName" type="text" placeholder="e.g., Organic Apples" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required />
+                    <input id="productName" type="text" placeholder="e.g., Organic Apples" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} required />
                   </div>
                   <div>
                     <label htmlFor="productType" className="block text-sm font-medium mb-1 text-foreground">Product Type *</label>
-                    <select id="productType" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground" value={newProduct.type} onChange={(e) => setNewProduct({...newProduct, type: e.target.value})} required>
-                      {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                    <select id="productType" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground" value={newProduct.type} onChange={(e) => setNewProduct({...newProduct, type: e.target.value})} required>
+                      {productTypes.map((type: string) => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                 </div>
                 {/* Description */}
                 <div>
                   <label htmlFor="productDescription" className="block text-sm font-medium mb-1 text-foreground">Description</label>
-                  <textarea id="productDescription" placeholder="Detailed product description" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" rows={3} value={newProduct.description || ''} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}></textarea>
+                  <textarea id="productDescription" placeholder="Detailed product description" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" rows={3} value={newProduct.description || ''} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}></textarea>
                 </div>
                 {/* Price and Stock */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="productPrice" className="block text-sm font-medium mb-1 text-foreground">Price (₹) *</label>
-                    <input id="productPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.price ?? ''} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} required />
+                    <input id="productPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.price ?? ''} onChange={(e) => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})} required />
                   </div>
                   <div>
                     <label htmlFor="productStock" className="block text-sm font-medium mb-1 text-foreground">Stock Quantity</label>
-                    <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
+                    <input id="productStock" type="number" placeholder="0" min="0" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.stock_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, stock_quantity: parseInt(e.target.value) || 0})} />
                   </div>
                 </div>
-                {/* Image URL Management */}
+
+                {/* Image URL Management Section */}
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-foreground">Product Images *</label>
-                  <div className="flex items-center mb-2">
-                    <input type="url" placeholder="Enter image URL (.jpg, .png, .webp)" className="flex-grow p-2 border border-border rounded-l-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={currentImageUrl} onChange={(e) => setCurrentImageUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl();}}} />
-                    <button type="button" onClick={handleAddImageUrl} className="p-2 bg-amber-500 text-white rounded-r-md hover:bg-amber-600 transition-colors flex items-center justify-center h-[42px] w-[42px]"> <ImagePlus size={20} /> </button>
+                  <label htmlFor="currentImageUrl" className="block text-sm font-medium mb-1 text-foreground">Product Image URL(s)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="currentImageUrl"
+                      type="url"
+                      placeholder="Enter image URL and click Add"
+                      className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground"
+                      value={currentImageUrl}
+                      onChange={(e) => setCurrentImageUrl(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(); }}}
+                    />
+                    <Button type="button" onClick={handleAddImageUrl} variant="outline" className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0">
+                      <PlusCircle className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Add</span>
+                    </Button>
                   </div>
-                  <div className="space-y-2 mb-2 max-h-32 overflow-y-auto pr-2">
-                    {Array.isArray(newProduct.image_url) && newProduct.image_url.map((url, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md border border-border">
-                        <span className="text-xs text-muted-foreground truncate flex-grow mr-2" title={url}>{url}</span>
-                        <button type="button" onClick={() => handleRemoveImageUrl(idx)} className="text-red-500 hover:text-red-700 p-1"> <Trash2 size={16} /> </button>
-                      </div>
-                    ))}
-                  </div>
-                  {(!newProduct.image_url || (Array.isArray(newProduct.image_url) && newProduct.image_url.length === 0)) && (<p className="text-xs text-muted-foreground">No images added. Add at least one URL.</p>)}
                 </div>
+
+                {/* Image Preview and Management Panel */}
+                <div className="mt-4 p-4 border border-border rounded-lg bg-muted/20 min-h-[120px] flex flex-col justify-center">
+                  {imagePreviewUrl && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-foreground mb-1">New image preview:</p>
+                      <img 
+                        src={imagePreviewUrl} 
+                        alt="New image preview" 
+                        className="max-w-xs h-auto rounded-md border border-border shadow-sm" 
+                        style={{ maxHeight: '100px' }} 
+                        onError={(e) => (e.currentTarget.src = '/static/images/image-placeholder.png')}
+                      />
+                    </div>
+                  )}
+
+                  {Array.isArray(newProduct.image_url) && newProduct.image_url.length > 0 && (
+                    <div className={imagePreviewUrl ? "mt-4 pt-4 border-t border-border" : ""}>
+                      <h4 className="text-md font-semibold text-foreground mb-3">Current Product Images:</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        {(newProduct.image_url as string[]).map((url, index) => (
+                          <div key={index} className="relative group aspect-square">
+                            <img
+                              src={url}
+                              alt={`Product image ${index + 1}`}
+                              className="w-full h-full object-cover rounded-md border border-border shadow-sm"
+                              onError={(e) => (e.currentTarget.src = '/static/images/image-placeholder.png')}
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => handleRemoveImageUrl(index)}
+                              variant="destructive"
+                              size="icon" 
+                              className="absolute top-1 right-1 p-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                              aria-label="Remove image"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!imagePreviewUrl && (!Array.isArray(newProduct.image_url) || newProduct.image_url.length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center">Image preview and added images will appear here.</p>
+                  )}
+                </div>
+
+                {/* Brand and Origin */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="productBrand" className="block text-sm font-medium mb-1 text-foreground">Brand</label>
+                    <input id="productBrand" type="text" placeholder="e.g., FarmFresh" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.brand || ''} onChange={(e) => setNewProduct({...newProduct, brand: e.target.value})} />
+                  </div>
+                  <div>
+                    <label htmlFor="productOrigin" className="block text-sm font-medium mb-1 text-foreground">Origin</label>
+                    <input id="productOrigin" type="text" placeholder="e.g., Local Farms, India" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.origin || ''} onChange={(e) => setNewProduct({...newProduct, origin: e.target.value})} />
+                  </div>
+                </div>
+
+                {/* BBE and Delivery Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="productBBE" className="block text-sm font-medium mb-1 text-foreground">Best Before End (BBE)</label>
+                    <input id="productBBE" type="text" placeholder="e.g., 3 months, DD/MM/YYYY" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.bbe || ''} onChange={(e) => setNewProduct({...newProduct, bbe: e.target.value})} />
+                  </div>
+                  <div>
+                    <label htmlFor="productDeliveryInfo" className="block text-sm font-medium mb-1 text-foreground">Delivery Information</label>
+                    <input id="productDeliveryInfo" type="text" placeholder="e.g., Ships in 2-3 days" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.delivery_info || ''} onChange={(e) => setNewProduct({...newProduct, delivery_info: e.target.value})} />
+                  </div>
+                </div>
+                
                 {/* B2B Fields */}
                 <div className="pt-4 border-t border-border">
                   <h4 className="text-md font-semibold text-foreground mb-2">B2B Settings</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="b2bPrice" className="block text-sm font-medium mb-1 text-foreground">B2B Price (₹)</label>
-                      <input id="b2bPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_price ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value) || null})} />
+                      <input id="b2bPrice" type="number" placeholder="0.00" min="0" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_price ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_price: parseFloat(e.target.value) || null})} />
                     </div>
                     <div>
                       <label htmlFor="b2bMinQuantity" className="block text-sm font-medium mb-1 text-foreground">B2B Min. Quantity (kg)</label>
-                      <input id="b2bMinQuantity" type="number" placeholder="25" min="0" className="w-full p-2 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_minimum_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value) || null})} />
+                      <input id="b2bMinQuantity" type="number" placeholder="25" min="0" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={newProduct.b2b_minimum_quantity ?? ''} onChange={(e) => setNewProduct({...newProduct, b2b_minimum_quantity: parseInt(e.target.value) || null})} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-center">
@@ -434,61 +714,64 @@ const AdminPage: React.FC = () => {
                 </div>
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end space-x-3 pt-4">
-                  {editingProduct && (<button type="button" onClick={() => { setEditingProduct(null); setNewProduct(initialNewProductState); setCurrentImageUrl(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors">Cancel Edit</button>)}
+                  {editingProduct && (<button type="button" onClick={() => { setEditingProduct(null); setNewProduct(initialNewProductState); setCurrentImageUrl(''); setImagePreviewUrl(null); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel Edit</button>)}
                   <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center"> <Save size={18} className="mr-2"/> {editingProduct ? 'Update Product' : 'Create Product'} </button>
                 </div>
               </form>
             </div>
-            {/* Product List */}
+            {/* Product List - MODIFIED to show new fields and add edit buttons for nutrients/discounts */}
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-grow w-full md:w-auto">
-                <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Search products..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={productSearchTerm} onChange={(e) => setProductSearchTerm(e.target.value)} />
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
               <div className="relative flex-grow w-full md:w-auto">
-                <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={productTypeFilter} onChange={(e) => setProductTypeFilter(e.target.value)}>
+                <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none bg-input text-foreground transition-shadow" value={productTypeFilter} onChange={(e) => setProductTypeFilter(e.target.value)}>
                   <option value="all">All Types</option>
-                  {productTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                  {productTypes.map((type: string) => <option key={type} value={type}>{type}</option>)}
                 </select>
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               </div>
-              <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
+              <button onClick={() => { fetchProducts(); toast({ title: "Products Refreshed" }) }} className="p-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg transition-colors flex items-center justify-center" title="Refresh Product List"> <RefreshCw size={18} /> </button>
             </div>
-            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+            {loading.products ? (
+              <div className="flex justify-center items-center py-10">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+                <p className="ml-3 text-muted-foreground">Loading products...</p>
+              </div>
+            ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="min-w-full divide-y divide-border bg-card">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Image</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price (₹)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">B2B</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Updated</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Image</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name/Brand</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type/Origin</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Price (₹)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Discount (%)</th>
+                      {/* <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nutrients</th> Removed for brevity, manage in new tab */}
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredProducts.length > 0 ? filteredProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <img src={getDisplayImageUrl(product.image_url, product.type)} alt={product.name} className="w-16 h-16 object-contain rounded-md bg-white border border-border p-0.5" onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { const target = e.target as HTMLImageElement; target.src = getDisplayImageUrl(null, product.type); target.onerror = null; }} />
+                        <td className="px-3 py-2">
+                          <img src={getDisplayImageUrl(product.image_url, product.type)} alt={product.name} className="w-12 h-12 object-contain rounded-md bg-white border border-border p-0.5" onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { const target = e.target as HTMLImageElement; target.src = getDisplayImageUrl(null, product.type); target.onerror = null; }} />
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm font-medium text-foreground truncate max-w-xs" title={product.name}>{product.name}</div><div className="text-xs text-muted-foreground truncate max-w-xs" title={product.description || undefined}>{product.description || "-"}</div></td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">{product.price.toFixed(2)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          {product.is_b2b ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{new Date(product.updated_at).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                          <button onClick={() => handleEditProduct(product)} className="text-amber-600 hover:text-amber-700 mr-3 p-1" title="Edit Product"><Edit size={18}/></button>
-                          <button onClick={() => handleDeleteProduct(product.id)} className="text-red-600 hover:text-red-700 p-1" title="Delete Product"><Trash2 size={18}/></button>
+                        <td className="px-3 py-2 whitespace-nowrap"><div className="text-sm font-medium text-foreground truncate max-w-[200px]" title={product.name}>{product.name}</div><div className="text-xs text-muted-foreground">{product.brand || 'N/A'}</div></td>
+                        <td className="px-3 py-2 whitespace-nowrap"><div className="text-sm text-muted-foreground">{product.type}</div><div className="text-xs text-muted-foreground">{product.origin || 'N/A'}</div></td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-foreground">{product.price.toFixed(2)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.stock_quantity}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium space-x-1">
+                          <button onClick={() => handleEditProduct(product)} className="text-accent hover:text-accent/80 p-1" title="Edit Base Product Info"><Edit size={16}/></button>
+                          <button onClick={() => handleDeleteProduct(product.id)} className="text-destructive hover:text-destructive/80 p-1" title="Delete Product"><Trash2 size={16}/></button>
+                          {/* Buttons to open nutrient/discount modals could be added here or in respective tabs */}
                         </td>
                       </tr>
-                    )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No products found.</td></tr>)}
+                    )) : (<tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No products found.</td></tr>)}
                   </tbody>
                 </table>
               </div>
@@ -501,16 +784,16 @@ const AdminPage: React.FC = () => {
             <h2 className="text-2xl font-semibold text-primary mb-6">Order Management</h2>
             <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-grow w-full md:w-auto">
-                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} />
+                    <input type="text" placeholder="Search orders..." className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-shadow bg-input text-foreground placeholder:text-muted-foreground" value={orderSearchTermState} onChange={(e) => setOrderSearchTermState(e.target.value)} /> {/* Renamed orderSearchTerm to orderSearchTermState */}
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="relative flex-grow w-full md:w-auto">
-                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
-                        {orderStatuses.map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))}
+                    <select className="w-full p-3 pl-10 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent outline-none appearance-none bg-input text-foreground transition-shadow" value={orderStatusFilterState} onChange={(e) => setOrderStatusFilterState(e.target.value)}> {/* Renamed orderStatusFilter to orderStatusFilterState */}
+                        {['all', 'pending', 'processing', 'delivered', 'cancelled'].map(status => (<option key={status} value={status} className="capitalize">{status === 'all' ? 'All Statuses' : status}</option>))} {/* Used array directly */}
                     </select>
                     <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 </div>
-                <button onClick={() => { fetchOrders(); toast({ title: "Orders Refreshed" }) }} className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center" title="Refresh Order List"> <RefreshCw size={18} /> </button>
+                <button onClick={() => { fetchOrders(); toast({ title: "Orders Refreshed" }) }} className="p-3 bg-secondary hover:bg-secondary/90 text-secondary-foreground rounded-lg transition-colors flex items-center justify-center" title="Refresh Order List"> <RefreshCw size={18} /> </button>
             </div>
             {loading.orders ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading orders...</p></div>) : (
             <div className="overflow-x-auto rounded-lg border border-border">
@@ -528,7 +811,7 @@ const AdminPage: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+                        {filteredOrdersState.length > 0 ? filteredOrdersState.map((order: Order) => (
                         <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary">#{order.id}</td>
                             <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm text-foreground">{order.user_details?.full_name || 'N/A'}</div><div className="text-xs text-muted-foreground">{order.user_details?.mobile_number || order.user_id}</div></td>
@@ -537,7 +820,7 @@ const AdminPage: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.status === 'delivered' ? 'bg-green-100 text-green-800' : order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : order.status === 'processing' ? 'bg-blue-100 text-blue-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{order.status}</span></td>
                             <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800' }`}>{order.payment_status}</span></td>
                             <td className="px-4 py-3 text-sm text-muted-foreground">{order.items.length} item(s) <ul className="text-xs list-disc list-inside">{order.items.slice(0,2).map(item => ( <li key={item.id} className="truncate max-w-[150px]" title={item.product_name}>{item.quantity}x {item.product_name}</li>))}{order.items.length > 2 && <li>...and {order.items.length - 2} more</li>}</ul></td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-amber-500 focus:border-amber-500 bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium"><div className="flex flex-col md:flex-row md:items-center"><select value={order.status} onChange={(e) => handleUpdateOrderStatusState(order.id, e.target.value)} className="text-xs p-1 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground mb-1 md:mb-0 md:mr-2 w-full md:w-auto"><option value="pending">Pending</option><option value="processing">Processing</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></div></td> {/* Renamed handleUpdateOrderStatus to handleUpdateOrderStatusState */}
                         </tr>
                         )) : (<tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No orders found.</td></tr>)}
                     </tbody>
@@ -546,6 +829,127 @@ const AdminPage: React.FC = () => {
             )}
           </div>
         </TabsContent>
+
+        {/* NEW TAB: Manage Discounts */}
+        <TabsContent value="discounts">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Manage Product Discounts</h2>
+            {editingDiscountForProduct ? (
+              <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
+                <h3 className="text-xl font-semibold text-foreground mb-4">Edit Discount for: <span className="text-amber-600">{editingDiscountForProduct.name}</span></h3>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveDiscountInfo(); }} className="space-y-4">
+                  <div>
+                    <label htmlFor="discountPercentage" className="block text-sm font-medium mb-1 text-foreground">Discount Percentage (%) *</label>
+                    <input id="discountPercentage" type="number" placeholder="e.g., 10 for 10%" min="0" max="100" step="0.01" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountPercentage} onChange={(e) => setCurrentDiscountPercentage(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label htmlFor="discountReason" className="block text-sm font-medium mb-1 text-foreground">Discount Reason (Optional)</label>
+                    <input id="discountReason" type="text" placeholder="e.g., Seasonal Sale, Clearance" className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground" value={currentDiscountReason} onChange={(e) => setCurrentDiscountReason(e.target.value)} />
+                  </div>
+                  <div className="flex items-center justify-end space-x-3 pt-4">
+                    <button type="button" onClick={() => { setEditingDiscountForProduct(null); setCurrentDiscountPercentage(''); setCurrentDiscountReason(''); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel</button>
+                    <button type="submit" disabled={loading.discounts} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.discounts ? 'Saving...' : 'Save Discount'} </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mb-4">Select a product from the list below to manage its discount.</p>
+            )}
+            {/* Product List for Discount Management */}
+            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product Name</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Price (₹)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Discount (%)</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {products.length > 0 ? products.map((product) => (
+                      <tr key={product.id} className={`hover:bg-muted/30 transition-colors ${editingDiscountForProduct?.id === product.id ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-foreground">{product.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.price.toFixed(2)}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">{product.discount_percentage ? `${product.discount_percentage}%` : '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground truncate max-w-[200px]" title={product.discount_reason || undefined}>{product.discount_reason || '-'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => handleEditDiscount(product)} className="text-accent hover:text-accent/80 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Discount </button>
+                        </td>
+                      </tr>
+                    )) : (<tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* NEW TAB: Manage Nutrients */}
+        <TabsContent value="nutrients">
+          <div className="bg-card p-4 md:p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-primary mb-6">Manage Product Nutrient Information</h2>
+            {editingNutrientsForProduct ? (
+              <div className="mb-8 p-4 md:p-6 border border-border rounded-lg bg-muted/30">
+                <h3 className="text-xl font-semibold text-foreground mb-4">Edit Nutrients for: <span className="text-amber-600">{editingNutrientsForProduct.name}</span></h3>
+                <form onSubmit={(e) => { e.preventDefault(); handleSaveNutrientInfo(); }} className="space-y-4">
+                  {/* Always render fields based on currentNutrientInfo, which is initialized with defaults by handleEditNutrients */}
+                  {(Object.keys(currentNutrientInfo) as Array<keyof NutrientInfo>).map(key => (
+                     <div key={key}>
+                       <label htmlFor={`nutrient_${key}`} className="block text-sm font-medium mb-1 text-foreground capitalize">{String(key).replace(/_/g, ' ')}</label>
+                       <input
+                         id={`nutrient_${key}`}
+                         type="text"
+                         placeholder={`Value for ${String(key).replace(/_/g, ' ')}`}
+                         className="w-full p-2 border border-border rounded-md focus:ring-accent focus:border-accent bg-input text-foreground placeholder:text-muted-foreground"
+                         value={currentNutrientInfo[key] || ''}
+                         onChange={(e) => setCurrentNutrientInfo(prev => ({...prev, [key]: e.target.value}))} />
+                     </div>
+                  ))}
+
+                  <div className="flex items-center justify-end space-x-3 pt-4">
+                    <button type="button" onClick={() => { setEditingNutrientsForProduct(null); setCurrentNutrientInfo({}); }} className="px-4 py-2 border border-border text-sm font-medium rounded-md hover:bg-muted transition-colors text-foreground">Cancel</button>
+                    <button type="submit" disabled={loading.nutrients} className="px-6 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-md hover:bg-primary/90 transition-colors flex items-center disabled:opacity-70"> <Save size={18} className="mr-2"/> {loading.nutrients ? 'Saving...' : 'Save Nutrients'} </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mb-4">Select a product from the list below to manage its nutrient information.</p>
+            )}
+            {/* Product List for Nutrient Management */}
+            {loading.products ? (<div className="flex justify-center items-center py-10"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div><p className="ml-3 text-muted-foreground">Loading products...</p></div>) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border bg-card">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Product Name</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nutrients Set?</th>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {products.length > 0 ? products.map((product) => (
+                      <tr key={product.id} className={`hover:bg-muted/30 transition-colors ${editingNutrientsForProduct?.id === product.id ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-foreground">{product.name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-muted-foreground">
+                          {product.nutrient_info && Object.values(product.nutrient_info).some(val => val && val.trim() !== '') 
+                            ? <CheckCircle className="w-5 h-5 text-green-500" /> 
+                            : <XCircle className="w-5 h-5 text-red-500" />}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                          <button onClick={() => handleEditNutrients(product)} className="text-accent hover:text-accent/80 p-1 flex items-center text-xs"> <Edit size={14} className="mr-1"/> Manage Nutrients </button>
+                        </td>
+                      </tr>
+                    )) : (<tr><td colSpan={3} className="px-4 py-10 text-center text-muted-foreground">No products available.</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
