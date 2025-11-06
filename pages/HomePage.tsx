@@ -4,7 +4,6 @@ import { useLenis } from '@/hooks/useLenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import LazyImage from '@/components/ui/LazyImage';
-import { supabase } from '@/lib/supabaseClient';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,6 +13,19 @@ interface ProductImageInfo {
   name: string; // Changed from product_name to name
   image_url: string | string[] | null;
 }
+
+// Static products data using images from public/static/images
+const staticProducts: ProductImageInfo[] = [
+  { id: '2', name: 'Chickoo', image_url: '/static/images/chickoo-1.png' },
+  { id: '3', name: 'Kiwi', image_url: '/static/images/kiwi-1.png' },
+  { id: '4', name: 'Pineapple', image_url: '/static/images/pineapple-1.png' },
+  { id: '5', name: 'Apple', image_url: '/static/images/product-apple.jpg' },
+  { id: '6', name: 'Carrot', image_url: '/static/images/product-carrot.jpg' },
+  { id: '7', name: 'Mango', image_url: '/static/images/product-mango.jpg' },
+  { id: '8', name: 'Pepper', image_url: '/static/images/product-pepper.jpg' },
+  { id: '9', name: 'Strawberry', image_url: '/static/images/product-strawberry.jpg' },
+  { id: '10', name: 'Tomato', image_url: '/static/images/product-tomato.jpg' },
+];
 
 const HomePage: React.FC = () => {
   useLenis();
@@ -46,31 +58,9 @@ const HomePage: React.FC = () => {
     return placeholder;
   };
 
-  // ADDED: useEffect for fetching products
+  // ADDED: useEffect for setting static products
   useEffect(() => {
-    const fetchProductsForScroll = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('id, name, image_url')
-          .order('created_at', { ascending: true })
-          .limit(10); // Fetch 10 products
-
-        if (error) {
-          console.error('Error fetching products for scroll:', error);
-          return;
-        }
-        if (data) {
-          // Ensure we have enough items for a good visual loop, duplicate if necessary
-          // For true infinite feel with 10 items, duplicating once is good.
-          // If less than 5, maybe duplicate more, but 10 is a good base.
-          setProductsForScroll(data as ProductImageInfo[]);
-        }
-      } catch (err) {
-        console.error('Unexpected error fetching products:', err);
-      }
-    };
-    fetchProductsForScroll();
+    setProductsForScroll(staticProducts);
   }, []);
 
   useEffect(() => {
@@ -82,7 +72,7 @@ const HomePage: React.FC = () => {
     handleReducedMotionChange(); // Initial check
     prefersReducedMotionQuery.addEventListener('change', handleReducedMotionChange);
 
-    // GSAP Horizontal Scroll Animation - Simple and reliable
+    // GSAP Horizontal Scroll Animation - Scroll-triggered with infinite effect
     if (horizontalScrollTrackRef.current && heroSectionRef.current && productsForScroll.length > 0 && !prefersReducedMotionQuery.matches) {
       const track = horizontalScrollTrackRef.current;
       const hero = heroSectionRef.current;
@@ -104,7 +94,7 @@ const HomePage: React.FC = () => {
           return;
         }
 
-        // Simple approach: scroll through all items
+        // Scroll through the tripled items for infinite effect
         const trackWidth = track.scrollWidth;
         const containerWidth = hero.offsetWidth;
         const scrollDistance = trackWidth - containerWidth;
@@ -140,10 +130,8 @@ const HomePage: React.FC = () => {
     };
   }, [productsForScroll]);
 
-  // Create a list of products to display - just double for simple infinite effect
-  const displayProducts = productsForScroll.length > 0 
-    ? [...productsForScroll, ...productsForScroll]
-    : [];
+  // Create a list of products to display - no duplicates
+  const displayProducts = productsForScroll;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50 text-gray-800 dark:from-slate-900 dark:via-slate-800 dark:to-gray-900 dark:text-gray-200">
